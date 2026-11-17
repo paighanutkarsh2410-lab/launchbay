@@ -73,6 +73,19 @@ jobs:
             docker build -q -t "template-check:$(basename "$dir")" "$dir"
             echo "::endgroup::"
           done
+      # Run each image as the cluster will: its template's UID, then the health check "Go live" uses.
+      - name: Every template's container starts and is healthy
+        run: |
+          for meta in templates/*/template.yaml; do
+            id=$(basename "$(dirname "$meta")")
+            port=$(sed -n 's/^port: //p' "$meta"); uid=$(sed -n 's/^uid: //p' "$meta")
+            docker run -d --name "$id" --user "$uid:$uid" -p "18080:$port" "template-check:$id" >/dev/null
+            ok=""
+            for i in $(seq 1 30); do curl -fs localhost:18080/healthz >/dev/null && ok=1 && break; sleep 1; done
+            [ -n "$ok" ] || { echo "::error::$id is not healthy as uid $uid on :$port"; docker logs "$id"; exit 1; }
+            echo "$id healthy as uid $uid on :$port"
+            docker rm -f "$id" >/dev/null
+          done
       # The same gate a launched service's own pipeline applies, run here first.
       - name: Scan the Python template image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
