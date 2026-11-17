@@ -1,0 +1,7 @@
+name: Static Site
+description: Static website served by unprivileged nginx, with link checks in CI.
+language: HTML
+runtime: nginx · unprivileged
+port: 8080
+accent: "#f59e0b"
+tags: [web, static, nginx]

@@ -1,0 +1,7 @@
+name: Node API
+description: Express service on Node 22 with health checks and node:test tests.
+language: JavaScript
+runtime: Express · Node 22
+port: 3000
+accent: "#22c55e"
+tags: [api, node, rest]
