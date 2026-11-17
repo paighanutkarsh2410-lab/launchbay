@@ -119,7 +119,8 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 
 - [x] **Phase 1**: portal, launcher, templates, demo and GitHub providers
 - [x] GitOps repo and Argo CD ApplicationSet on kind, behind Traefik
-- [ ] GitHub App on a `launchbay-labs` org for real end-to-end launches
+- [x] GitHub App on the `launchbay-labs` org: real launches, click to live URL in about 2.5 minutes
+- [ ] Retry and decommission from the portal
 - [ ] **Phase 2**: Kyverno guardrails, signed-image enforcement
 - [ ] **Phase 3**: cloud resources with Terraform on LocalStack
 - [ ] **Phase 4**: service scorecards and an AI helper that explains failed launches
