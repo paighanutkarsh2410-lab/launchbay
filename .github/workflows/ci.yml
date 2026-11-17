@@ -126,7 +126,8 @@ jobs:
           scan-type: fs
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
-          skip-dirs: templates
+          # Templates are scanned as built images; the kyverno tests hold deliberately bad pods.
+          skip-dirs: templates,platform/kyverno/tests
           # Fail on anything fixable; findings with no upstream fix yet are tracked, not blocking.
           ignore-unfixed: true
           exit-code: "1"
