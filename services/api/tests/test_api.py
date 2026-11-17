@@ -95,3 +95,12 @@ async def test_timestamps_are_utc(app: FastAPI, client: AsyncClient) -> None:
     detail = (await client.get("/api/services/payments-api")).json()
     assert detail["created_at"].endswith(("Z", "+00:00"))
     assert detail["launch"]["steps"][0]["started_at"].endswith(("Z", "+00:00"))
+
+
+def test_every_template_declares_a_non_root_uid() -> None:
+    catalog = TemplateCatalog(get_settings().templates_dir)
+    assert {t.id: t.uid for t in catalog.all()} == {
+        "node-express": 1000,
+        "python-fastapi": 10001,
+        "static-site": 101,
+    }

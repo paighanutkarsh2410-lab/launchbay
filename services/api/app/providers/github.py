@@ -195,6 +195,7 @@ class GitHubProvider(Provider):
             "image": request.outputs["image"],
             "port": request.template.port,
             "host": f"{request.name}.{self.settings.service_domain}",
+            "runAsUser": request.template.uid,
         }
         body = yaml.safe_dump(manifest, sort_keys=False)
         for line in body.splitlines():

@@ -68,6 +68,7 @@ class DemoProvider(Provider):
                 f"Writing services/{request.name}.yaml",
                 f"  image: {request.outputs.get('image', '')}",
                 f"  port: {request.template.port}",
+                f"  runAsUser: {request.template.uid}",
                 "Committed to launchbay-gitops@main",
             ],
         )

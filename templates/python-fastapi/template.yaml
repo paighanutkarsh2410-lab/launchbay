@@ -3,5 +3,6 @@ description: FastAPI service with health checks, tests and a hardened container.
 language: Python
 runtime: FastAPI · Python 3.12
 port: 8000
+uid: 10001
 accent: "#3b82f6"
 tags: [api, python, rest]

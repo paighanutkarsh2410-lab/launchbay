@@ -71,6 +71,34 @@ npm run dev
 Open http://localhost:5173 and launch a service. Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> for
 the command palette.
 
+## Run the platform
+
+Real launches deploy to a Kubernetes cluster on your own machine. You need Docker (Docker Desktop on
+WSL 2 on Windows), [kind](https://kind.sigs.k8s.io), kubectl and Helm.
+
+```bash
+./scripts/platform-up.sh
+```
+
+One command, safe to re-run. It creates a kind cluster, installs Traefik as the ingress controller,
+installs Argo CD (pinned and checksum-verified), and applies the ApplicationSet that watches
+[launchbay-gitops](https://github.com/paighanutkarsh2410-lab/launchbay-gitops). It also mints a
+**read-only** Argo CD API token for Launchbay and writes it to `services/api/.env` (git-ignored).
+
+| What | Where |
+|---|---|
+| Argo CD | http://argocd.localtest.me |
+| Any launched service | http://&lt;name&gt;.localtest.me |
+| Example service | http://hello-launchbay.localtest.me |
+
+`localtest.me` is a public DNS name that always resolves to `127.0.0.1`, so every service gets a
+real hostname with no hosts-file edits. Tear everything down with `kind delete cluster --name launchbay`.
+
+```
+ services/<name>.yaml ──► ApplicationSet ──► Application ──► namespace <name>
+   (launchbay-gitops)      (git generator)    (charts/service)   Deployment · Service · Ingress · PDB
+```
+
 ## Layout
 
 | Path | What |
@@ -78,12 +106,15 @@ the command palette.
 | `apps/portal` | React 19 + TypeScript portal |
 | `services/api` | FastAPI API, launcher and providers |
 | `templates/` | Golden-path templates rendered into new repos |
+| `platform/` | kind, Traefik and Argo CD configuration, and the ApplicationSet |
+| `scripts/platform-up.sh` | Brings the whole platform up locally |
 | `docs/architecture.md` | Design and roadmap |
 
 ## Roadmap
 
 - [x] **Phase 1**: portal, launcher, templates, demo and GitHub providers
-- [ ] GitOps repo and Argo CD ApplicationSet on kind
+- [x] GitOps repo and Argo CD ApplicationSet on kind, behind Traefik
+- [ ] GitHub App on a `launchbay-labs` org for real end-to-end launches
 - [ ] **Phase 2**: Kyverno guardrails, signed-image enforcement
 - [ ] **Phase 3**: cloud resources with Terraform on LocalStack
 - [ ] **Phase 4**: service scorecards and an AI helper that explains failed launches

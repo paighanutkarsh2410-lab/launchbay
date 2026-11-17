@@ -1,0 +1,12 @@
+# Local cluster for Launchbay. Traefik listens on NodePort 30080, which is
+# port 80 on the laptop, so http://<service>.localtest.me reaches the cluster.
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+name: launchbay
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 80
+        listenAddress: "127.0.0.1"
+        protocol: TCP

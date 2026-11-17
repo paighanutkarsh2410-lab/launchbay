@@ -18,6 +18,8 @@ class Template:
     language: str
     runtime: str
     port: int
+    # Numeric user the container runs as; the cluster only accepts verifiable non-root users.
+    uid: int = 10001
     tags: list[str] = field(default_factory=list)
     accent: str = "#7c5cff"
     path: Path = Path()
@@ -56,6 +58,7 @@ class TemplateCatalog:
                 language=raw["language"],
                 runtime=raw["runtime"],
                 port=int(raw["port"]),
+                uid=int(raw.get("uid", 10001)),
                 tags=list(raw.get("tags", [])),
                 accent=raw.get("accent", "#7c5cff"),
                 path=meta.parent,
