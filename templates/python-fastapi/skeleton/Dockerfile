@@ -1,4 +1,6 @@
 FROM python:3.12-slim AS base
+# Apply Debian security fixes newer than the base image.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements.txt .

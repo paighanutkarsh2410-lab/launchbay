@@ -73,6 +73,16 @@ jobs:
             docker build -q -t "template-check:$(basename "$dir")" "$dir"
             echo "::endgroup::"
           done
+      # The same gate a launched service's own pipeline applies, run here first.
+      - name: Scan the Python template image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with: { image-ref: "template-check:python-fastapi", severity: "CRITICAL,HIGH", ignore-unfixed: true, exit-code: "1" }
+      - name: Scan the Node template image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with: { image-ref: "template-check:node-express", severity: "CRITICAL,HIGH", ignore-unfixed: true, exit-code: "1" }
+      - name: Scan the static-site template image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with: { image-ref: "template-check:static-site", severity: "CRITICAL,HIGH", ignore-unfixed: true, exit-code: "1" }
 
   security:
     name: Trivy scan

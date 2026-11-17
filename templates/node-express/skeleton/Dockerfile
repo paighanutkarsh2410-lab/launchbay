@@ -1,4 +1,6 @@
 FROM node:22-alpine
+# Apply Alpine security fixes newer than the base image.
+RUN apk upgrade --no-cache
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package*.json ./
