@@ -8,9 +8,15 @@ const colors: Record<ServiceStatus | StepStatus, string> = {
   running: "bg-violet-soft",
   failed: "bg-rose",
   pending: "bg-faint",
+  decommissioned: "bg-faint",
 };
 
-const labels: Record<ServiceStatus, string> = { live: "Live", launching: "Launching", failed: "Failed" };
+const labels: Record<ServiceStatus, string> = {
+  live: "Live",
+  launching: "Launching",
+  failed: "Failed",
+  decommissioned: "Retired",
+};
 
 export function StatusDot({ status, className }: { status: ServiceStatus | StepStatus; className?: string }) {
   const active = status === "launching" || status === "running" || status === "live";
@@ -30,6 +36,7 @@ export function StatusBadge({ status }: { status: ServiceStatus }) {
         status === "live" && "border-mint/20 bg-mint/10 text-mint",
         status === "launching" && "border-violet/25 bg-violet/10 text-violet-soft",
         status === "failed" && "border-rose/20 bg-rose/10 text-rose",
+        status === "decommissioned" && "border-white/10 bg-white/[0.04] text-faint",
       )}
     >
       <StatusDot status={status} />

@@ -100,6 +100,56 @@ class Launcher:
         self.start(launch.id)
         return service
 
+    async def retry(self, session: AsyncSession, service: Service) -> Launch:
+        """Starts a new launch that keeps every stage that succeeded and resumes at the first
+        one that did not. The previous launch stays in the history."""
+        previous = service.launches[0]
+        steps = []
+        resuming = False
+        for i, (stage, old) in enumerate(zip(STAGES, previous.steps, strict=True)):
+            if old.status == StepStatus.SUCCEEDED and not resuming:
+                steps.append(
+                    LaunchStep(
+                        key=stage.key,
+                        title=stage.title,
+                        position=i,
+                        status=StepStatus.SUCCEEDED,
+                        detail=old.detail,
+                        logs=[*old.logs, "↺ Kept from the previous launch"],
+                        started_at=old.started_at,
+                        finished_at=old.finished_at,
+                    )
+                )
+            else:
+                resuming = True
+                steps.append(LaunchStep(key=stage.key, title=stage.title, position=i, logs=[]))
+        launch = Launch(service=service, steps=steps)
+        service.status = ServiceStatus.LAUNCHING
+        service.url = None
+        session.add(launch)
+        await session.commit()
+        self.start(launch.id)
+        return launch
+
+    async def decommission(
+        self, session: AsyncSession, service: Service, *, delete_repository: bool
+    ) -> list[str]:
+        """Removes the service from GitOps (Argo CD prunes it) and archives or deletes its repo."""
+        request = LaunchRequest(
+            name=service.name,
+            description=service.description,
+            owner=service.owner,
+            template=self.catalog.get(service.template_id),
+        )
+        lines = await self.provider.decommission(request, delete_repository=delete_repository)
+        if delete_repository:
+            await session.delete(service)
+        else:
+            service.status = ServiceStatus.DECOMMISSIONED
+            service.url = None
+        await session.commit()
+        return lines
+
     def start(self, launch_id: str) -> None:
         task = asyncio.create_task(self.run(launch_id), name=f"launch-{launch_id}")
         self._tasks.add(task)
@@ -134,10 +184,32 @@ class Launcher:
                 template=template,
             )
             steps = {step.key: step for step in launch.steps}
+            kept = {k: s.detail for k, s in steps.items() if s.status == StepStatus.SUCCEEDED}
 
             failed: str | None = None
+            if kept:
+                # A retry: let the provider rebuild what the kept stages produced.
+                try:
+                    await self.provider.resume(request, kept)
+                    service.repo_url = service.repo_url or request.outputs.get("repo_url")
+                except StepError as error:
+                    failed = str(error)
+                except Exception:
+                    log.exception("Launch %s could not resume", launch_id)
+                    failed = "Could not resume the previous launch. Check the API logs."
+
             for stage in STAGES:
                 step = steps[stage.key]
+                if step.status == StepStatus.SUCCEEDED:
+                    continue
+                if failed:
+                    # Resuming failed: report it on the first stage that would have run.
+                    step.status = StepStatus.FAILED
+                    step.started_at = step.finished_at = now()
+                    await StepRecorder(self, session, launch_id, step).log(f"✗ {failed}")
+                    await session.commit()
+                    await self.events.publish(launch_id, step_event(step))
+                    break
                 step.status = StepStatus.RUNNING
                 step.started_at = now()
                 await session.commit()

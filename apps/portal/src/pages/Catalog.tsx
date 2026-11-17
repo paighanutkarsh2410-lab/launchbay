@@ -16,6 +16,7 @@ const filters: { key: ServiceStatus | "all"; label: string }[] = [
   { key: "live", label: "Live" },
   { key: "launching", label: "Launching" },
   { key: "failed", label: "Failed" },
+  { key: "decommissioned", label: "Retired" },
 ];
 
 export function Catalog() {

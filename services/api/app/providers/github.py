@@ -95,6 +95,57 @@ class GitHubProvider(Provider):
             raise StepError(f"GitHub {method} {path} failed ({response.status_code}): {message}")
         return response
 
+    async def _gh_optional(self, method: str, path: str, **kwargs) -> dict | None:
+        """Like _gh, but a 404 returns None instead of failing."""
+        headers = {"Authorization": f"Bearer {await self.app.token()}"}
+        response = await self.http.request(method, path, headers=headers, **kwargs)
+        if response.status_code == 404:
+            return None
+        if response.status_code >= 400:
+            raise StepError(f"GitHub {method} {path} failed ({response.status_code})")
+        return response.json() if response.content else {}
+
+    def _gitops_path(self, path: str) -> str:
+        return f"/repos/{self.owner}/{self.settings.gitops_repo}/contents/{path}"
+
+    # Retry
+    async def resume(self, request: LaunchRequest, kept: dict[str, str | None]) -> None:
+        repo = await self._gh_optional("GET", f"/repos/{self.owner}/{request.name}")
+        if repo is None:
+            raise StepError(f"{self.owner}/{request.name} no longer exists; decommission instead")
+        request.outputs["repo_url"] = repo["html_url"]
+        # Follow the newest commit on main, so a developer can push a fix and retry.
+        head = (await self._gh("GET", f"/repos/{self.owner}/{request.name}/commits/main")).json()
+        request.outputs["commit"] = head["sha"]
+        if kept.get("pipeline"):
+            request.outputs["image"] = kept["pipeline"] or ""
+
+    # Decommission
+    async def decommission(self, request: LaunchRequest, *, delete_repository: bool) -> list[str]:
+        done: list[str] = []
+        path = f"services/{request.name}.yaml"
+        existing = await self._gh_optional("GET", self._gitops_path(path))
+        if existing:
+            await self._gh(
+                "DELETE",
+                self._gitops_path(path),
+                json={"message": f"Decommission {request.name}", "sha": existing["sha"]},
+            )
+            done.append(f"Removed {path}; Argo CD prunes the app and its resources")
+        else:
+            done.append(f"{path} was not in GitOps")
+
+        repo_path = f"/repos/{self.owner}/{request.name}"
+        if await self._gh_optional("GET", repo_path) is None:
+            done.append(f"{self.owner}/{request.name} was already gone")
+        elif delete_repository:
+            await self._gh("DELETE", repo_path)
+            done.append(f"Deleted {self.owner}/{request.name}")
+        else:
+            await self._gh("PATCH", repo_path, json={"archived": True})
+            done.append(f"Archived {self.owner}/{request.name}")
+        return done
+
     # Stage 2
     async def create_repository(self, request: LaunchRequest, ctx: StepContext) -> str:
         name = request.name
@@ -178,7 +229,10 @@ class GitHubProvider(Provider):
         run = await poll(finished_run, PIPELINE_TIMEOUT, 10, "the CI pipeline")
         await ctx.log(f"Run: {run['html_url']}")
         if run["conclusion"] != "success":
-            raise StepError(f"CI finished with '{run['conclusion']}'. See {run['html_url']}")
+            raise StepError(
+                f"CI finished with '{run['conclusion']}'. See {run['html_url']}. "
+                "Push a fix to main, then retry."
+            )
 
         image = f"ghcr.io/{self.owner}/{name}:{sha}"
         await ctx.log(f"Image: {image}")
@@ -200,12 +254,15 @@ class GitHubProvider(Provider):
         body = yaml.safe_dump(manifest, sort_keys=False)
         for line in body.splitlines():
             await ctx.log(f"  {line}")
+        # Updating an existing file (a retry) needs its current blob sha.
+        existing = await self._gh_optional("GET", self._gitops_path(path))
         await self._gh(
             "PUT",
-            f"/repos/{self.owner}/{self.settings.gitops_repo}/contents/{path}",
+            self._gitops_path(path),
             json={
-                "message": f"Launch {request.name}",
+                "message": f"{'Update' if existing else 'Launch'} {request.name}",
                 "content": base64.b64encode(body.encode()).decode(),
+                **({"sha": existing["sha"]} if existing else {}),
             },
         )
         await ctx.log(f"Committed {path} to {self.settings.gitops_repo}")

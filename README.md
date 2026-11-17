@@ -43,6 +43,10 @@ happen: logs scroll in, the timeline fills, and the rocket flies.
 
 - **Live mission view.** A streamed timeline, per-stage terminal and an animated trajectory, built
   with React, Motion and Tailwind CSS. Respects `prefers-reduced-motion`.
+- **Retry and decommission.** A failed launch resumes at the stage that failed and keeps the ones
+  that passed, following the newest commit so a pushed fix is picked up. Decommissioning removes
+  the GitOps manifest (Argo CD prunes everything) and archives or deletes the repo, behind a
+  type-the-name confirmation.
 - **Provider architecture.** The launcher talks to the world only through providers. `GitHubProvider`
   does it for real; `DemoProvider` simulates every stage so the portal runs with no credentials.
 - **GitHub App, not tokens.** Scoped permissions and short-lived installation tokens.
@@ -120,7 +124,7 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 - [x] **Phase 1**: portal, launcher, templates, demo and GitHub providers
 - [x] GitOps repo and Argo CD ApplicationSet on kind, behind Traefik
 - [x] GitHub App on the `launchbay-labs` org: real launches, click to live URL in about 2.5 minutes
-- [ ] Retry and decommission from the portal
+- [x] Retry from the failed stage and decommission (archive or delete) from the portal
 - [ ] **Phase 2**: Kyverno guardrails, signed-image enforcement
 - [ ] **Phase 3**: cloud resources with Terraform on LocalStack
 - [ ] **Phase 4**: service scorecards and an AI helper that explains failed launches

@@ -14,7 +14,8 @@ patches:
         path: /data
         value:
           server.insecure: "true"
-          applicationsetcontroller.policy: create-update
+          # "sync": apps are created, updated and deleted with their manifest in GitOps.
+          applicationsetcontroller.policy: sync
   # A read-only API account that Launchbay uses to watch deploys.
   - target: { kind: ConfigMap, name: argocd-cm }
     patch: |-

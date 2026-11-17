@@ -90,6 +90,18 @@ class DemoProvider(Provider):
         )
         await ctx.detail("Synced · Healthy")
 
+    async def resume(self, request: LaunchRequest, kept: dict[str, str | None]) -> None:
+        if kept.get("pipeline"):
+            request.outputs["image"] = kept["pipeline"] or ""
+
+    async def decommission(self, request: LaunchRequest, *, delete_repository: bool) -> list[str]:
+        await self._pause(0.6)
+        return [
+            f"Removed services/{request.name}.yaml from launchbay-gitops",
+            f"Argo CD pruned namespace {request.name}",
+            f"{'Deleted' if delete_repository else 'Archived'} launchbay-labs/{request.name}",
+        ]
+
     async def wait_live(self, request: LaunchRequest, ctx: StepContext) -> str:
         url = f"http://{request.name}.{self.domain}"
         await self._say(ctx, [f"GET {url}/healthz", "200 OK in 12ms"])

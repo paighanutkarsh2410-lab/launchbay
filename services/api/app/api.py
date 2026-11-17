@@ -11,9 +11,12 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.launcher import Launcher
 from app.models import Launch, Service, ServiceStatus, StepStatus
+from app.providers.base import StepError
 from app.schemas import (
     NAME_PATTERN,
     RESERVED_NAMES,
+    DecommissionRequest,
+    DecommissionResult,
     LaunchOut,
     NameCheck,
     ServiceCreate,
@@ -74,7 +77,7 @@ async def create_service(
     launcher: Annotated[Launcher, Depends(get_launcher)],
 ) -> Service:
     if catalog.get(body.template_id) is None:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown template")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown template")
     if await session.scalar(select(func.count()).where(Service.name == body.name)):
         raise HTTPException(status.HTTP_409_CONFLICT, f"A service named '{body.name}' exists")
     return await launcher.create(
@@ -138,6 +141,42 @@ async def stream_events(name: str, request: Request, session: Session) -> EventS
     return EventSourceResponse(events(), ping=15)
 
 
+@router.post(
+    "/services/{name}/retry", response_model=ServiceOut, status_code=status.HTTP_202_ACCEPTED
+)
+async def retry_service(
+    name: str, session: Session, launcher: Annotated[Launcher, Depends(get_launcher)]
+) -> Service:
+    """Resumes a failed launch at the stage that failed, keeping the stages that succeeded."""
+    service = await _load_service(session, name)
+    if service.status != ServiceStatus.FAILED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Only a failed launch can be retried")
+    await launcher.retry(session, service)
+    return service
+
+
+@router.post("/services/{name}/decommission", response_model=DecommissionResult)
+async def decommission_service(
+    name: str,
+    body: DecommissionRequest,
+    session: Session,
+    launcher: Annotated[Launcher, Depends(get_launcher)],
+) -> DecommissionResult:
+    """Takes a service out of GitOps (Argo CD prunes it) and archives or deletes its repo."""
+    service = await _load_service(session, name)
+    if service.status == ServiceStatus.LAUNCHING:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Wait for the launch to finish first")
+    if service.status == ServiceStatus.DECOMMISSIONED and body.repository == "archive":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Already decommissioned")
+    try:
+        steps = await launcher.decommission(
+            session, service, delete_repository=body.repository == "delete"
+        )
+    except StepError as error:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(error)) from error
+    return DecommissionResult(name=name, repository=body.repository, steps=steps)
+
+
 @router.get("/stats", response_model=Stats)
 async def stats(session: Session) -> Stats:
     counts = dict(
@@ -148,7 +187,8 @@ async def stats(session: Session) -> Stats:
     )
     durations = [(end - start).total_seconds() for start, end in finished.all() if end]
     return Stats(
-        services=sum(counts.values()),
+        # Decommissioned services stay in the history but are not counted as running ones.
+        services=sum(counts.values()) - counts.get(ServiceStatus.DECOMMISSIONED, 0),
         live=counts.get(ServiceStatus.LIVE, 0),
         launching=counts.get(ServiceStatus.LAUNCHING, 0),
         failed=counts.get(ServiceStatus.FAILED, 0),

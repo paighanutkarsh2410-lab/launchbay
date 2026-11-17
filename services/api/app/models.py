@@ -42,6 +42,7 @@ class ServiceStatus(enum.StrEnum):
     LAUNCHING = "launching"
     LIVE = "live"
     FAILED = "failed"
+    DECOMMISSIONED = "decommissioned"
 
 
 class StepStatus(enum.StrEnum):

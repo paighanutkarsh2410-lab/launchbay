@@ -47,3 +47,14 @@ class Provider(ABC):
     @abstractmethod
     async def wait_live(self, request: LaunchRequest, ctx: StepContext) -> str:
         """Waits for the service's health check. Returns its URL."""
+
+    @abstractmethod
+    async def resume(self, request: LaunchRequest, kept: dict[str, str | None]) -> None:
+        """Before a retry: fills request.outputs from the stages being kept.
+
+        `kept` maps each kept stage to its recorded detail (the pipeline's is its image)."""
+
+    @abstractmethod
+    async def decommission(self, request: LaunchRequest, *, delete_repository: bool) -> list[str]:
+        """Removes the GitOps manifest, then archives or deletes the repo. Returns what it did.
+        Must succeed when parts are already gone, so a half-launched service can be removed."""

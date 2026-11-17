@@ -1,5 +1,5 @@
 export type StepStatus = "pending" | "running" | "succeeded" | "failed";
-export type ServiceStatus = "launching" | "live" | "failed";
+export type ServiceStatus = "launching" | "live" | "failed" | "decommissioned";
 
 export interface Template {
   id: string;
@@ -69,6 +69,12 @@ export interface NewService {
   description: string;
 }
 
+export interface DecommissionResult {
+  name: string;
+  repository: "archive" | "delete";
+  steps: string[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -101,6 +107,12 @@ export const api = {
   stats: () => request<Stats>("/stats"),
   checkName: (name: string) =>
     request<NameCheck>(`/services/check-name?name=${encodeURIComponent(name)}`),
+  retry: (name: string) => request<Service>(`/services/${name}/retry`, { method: "POST" }),
+  decommission: (name: string, repository: "archive" | "delete") =>
+    request<DecommissionResult>(`/services/${name}/decommission`, {
+      method: "POST",
+      body: JSON.stringify({ repository }),
+    }),
   createService: (body: NewService) =>
     request<Service>("/services", { method: "POST", body: JSON.stringify(body) }),
 };

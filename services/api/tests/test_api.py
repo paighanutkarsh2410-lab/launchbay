@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 
 from app.config import get_settings
+from app.providers.base import StepError
+from app.providers.demo import DemoProvider
 from app.templates_catalog import TemplateCatalog
 
 NEW_SERVICE = {
@@ -104,3 +106,73 @@ def test_every_template_declares_a_non_root_uid() -> None:
         "python-fastapi": 10001,
         "static-site": 101,
     }
+
+
+class FlakyDeployProvider(DemoProvider):
+    """Fails the deploy stage the first time, like Argo CD timing out once."""
+
+    def __init__(self) -> None:
+        super().__init__(speed=0)
+        self.deploys = 0
+
+    async def deploy(self, request, ctx) -> None:
+        self.deploys += 1
+        if self.deploys == 1:
+            raise StepError("Timed out waiting for Argo CD")
+        await super().deploy(request, ctx)
+
+
+async def test_retry_resumes_at_the_failed_stage(app: FastAPI, client: AsyncClient) -> None:
+    app.state.launcher.provider = FlakyDeployProvider()
+    await client.post("/api/services", json=NEW_SERVICE)
+    await app.state.launcher.wait_idle()
+    failed = (await client.get("/api/services/payments-api")).json()
+    assert failed["status"] == "failed"
+    assert "Argo CD" in failed["launch"]["error"]
+
+    assert (await client.post("/api/services/payments-api/retry")).status_code == 202
+    await app.state.launcher.wait_idle()
+
+    detail = (await client.get("/api/services/payments-api")).json()
+    assert detail["status"] == "live"
+    assert detail["launch"]["id"] != failed["launch"]["id"]
+    steps = {s["key"]: s for s in detail["launch"]["steps"]}
+    # Stages that succeeded before are kept, not re-run.
+    assert steps["pipeline"]["logs"][-1] == "↺ Kept from the previous launch"
+    assert steps["pipeline"]["detail"] == failed["launch"]["steps"][2]["detail"]
+    assert "Kept" not in steps["deploy"]["logs"][-1]
+    assert all(s["status"] == "succeeded" for s in steps.values())
+
+
+async def test_only_failed_launches_can_be_retried(app: FastAPI, client: AsyncClient) -> None:
+    await client.post("/api/services", json=NEW_SERVICE)
+    await app.state.launcher.wait_idle()
+    assert (await client.post("/api/services/payments-api/retry")).status_code == 409
+
+
+async def test_decommission_archives_and_keeps_history(app: FastAPI, client: AsyncClient) -> None:
+    await client.post("/api/services", json=NEW_SERVICE)
+    await app.state.launcher.wait_idle()
+
+    result = await client.post("/api/services/payments-api/decommission", json={})
+    assert result.status_code == 200
+    assert result.json()["repository"] == "archive"
+    assert any("Archived" in step for step in result.json()["steps"])
+
+    detail = (await client.get("/api/services/payments-api")).json()
+    assert detail["status"] == "decommissioned" and detail["url"] is None
+    assert (await client.get("/api/stats")).json()["services"] == 0
+    # The archived repo keeps the name taken.
+    assert (await client.post("/api/services", json=NEW_SERVICE)).status_code == 409
+
+
+async def test_decommission_with_delete_frees_the_name(app: FastAPI, client: AsyncClient) -> None:
+    await client.post("/api/services", json=NEW_SERVICE)
+    await app.state.launcher.wait_idle()
+
+    result = await client.post(
+        "/api/services/payments-api/decommission", json={"repository": "delete"}
+    )
+    assert any("Deleted" in step for step in result.json()["steps"])
+    assert (await client.get("/api/services/payments-api")).status_code == 404
+    assert (await client.post("/api/services", json=NEW_SERVICE)).status_code == 201

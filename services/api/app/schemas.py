@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -85,6 +86,17 @@ class ServiceOut(BaseModel):
 
 class ServiceDetail(ServiceOut):
     launch: LaunchOut | None
+
+
+class DecommissionRequest(BaseModel):
+    # Archiving keeps the code and history read-only; deleting frees the name.
+    repository: Literal["archive", "delete"] = "archive"
+
+
+class DecommissionResult(BaseModel):
+    name: str
+    repository: Literal["archive", "delete"]
+    steps: list[str]
 
 
 class NameCheck(BaseModel):

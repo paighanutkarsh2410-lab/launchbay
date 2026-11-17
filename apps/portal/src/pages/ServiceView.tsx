@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { ArrowLeft, Check, Copy, ExternalLink, GitBranch, Rocket, X } from "lucide-react";
+import { ArrowLeft, Check, Copy, ExternalLink, GitBranch, PowerOff, RotateCcw, Rocket, X } from "lucide-react";
 import { AnimatePresence, motion, useSpring, useTransform } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Burst } from "@/components/Burst";
+import { DecommissionDialog } from "@/components/DecommissionDialog";
 import { MagneticButton } from "@/components/MagneticButton";
 import { StatusBadge } from "@/components/StatusDot";
 import { TemplateIcon } from "@/components/TemplateIcon";
@@ -214,7 +215,13 @@ export function ServiceView() {
   const { name } = useParams();
   const { data: service, error } = useQuery({ queryKey: ["service", name], queryFn: () => api.service(name!), enabled: !!name });
   const { data: templates = [] } = useQuery({ queryKey: ["templates"], queryFn: api.templates });
-  const stream = useLaunchStream(name);
+  const queryClient = useQueryClient();
+  const stream = useLaunchStream(name, service?.launch?.id);
+  const [decommissioning, setDecommissioning] = useState(false);
+  const retry = useMutation({
+    mutationFn: () => api.retry(name!),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["service", name] }),
+  });
   const launch = stream.launch ?? service?.launch ?? null;
   const steps = useMemo(() => launch?.steps ?? [], [launch]);
   const running = launch?.status === "running";
@@ -243,7 +250,15 @@ export function ServiceView() {
   }
 
   const template = templates.find((t) => t.id === service?.template_id);
-  const status = launch?.status === "succeeded" ? "live" : launch?.status === "failed" ? "failed" : (service?.status ?? "launching");
+  const retired = service?.status === "decommissioned";
+  const status = retired
+    ? "decommissioned"
+    : launch?.status === "succeeded"
+      ? "live"
+      : launch?.status === "failed"
+        ? "failed"
+        : (service?.status ?? "launching");
+  const failedStep = steps.find((s) => s.status === "failed");
   const url = stream.url ?? service?.url;
   const repoUrl = stream.repoUrl ?? service?.repo_url;
 
@@ -265,7 +280,24 @@ export function ServiceView() {
             {launch && <> · {duration(launch.started_at, launch.finished_at, now)}</>}
           </p>
         </div>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
+          {status === "failed" && failedStep && (
+            <MagneticButton onClick={() => retry.mutate()} disabled={retry.isPending}>
+              <motion.span animate={retry.isPending ? { rotate: -360 } : { rotate: 0 }} transition={retry.isPending ? { duration: 0.8, repeat: Infinity, ease: "linear" } : {}}>
+                <RotateCcw size={15} />
+              </motion.span>
+              Retry from {stageByKey[failedStep.key]?.title ?? failedStep.title}
+            </MagneticButton>
+          )}
+          {(status === "live" || status === "failed") && (
+            <MagneticButton
+              variant="ghost"
+              onClick={() => setDecommissioning(true)}
+              className="hover:border-rose/40 hover:text-rose"
+            >
+              <PowerOff size={15} /> Decommission
+            </MagneticButton>
+          )}
           {repoUrl && (
             <MagneticButton variant="ghost" onClick={() => window.open(repoUrl, "_blank", "noopener,noreferrer")}>
               <GitBranch size={15} /> Repository <ExternalLink size={13} className="opacity-60" />
@@ -274,10 +306,36 @@ export function ServiceView() {
         </div>
       </div>
 
+      <DecommissionDialog name={name!} open={decommissioning} onClose={() => setDecommissioning(false)} />
+
+      {retired && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="panel flex items-center gap-4 p-5"
+        >
+          <span className="flex size-11 items-center justify-center rounded-2xl bg-white/[0.06] text-muted">
+            <PowerOff size={20} />
+          </span>
+          <div>
+            <p className="font-display text-lg font-semibold">Retired</p>
+            <p className="text-sm text-muted">
+              Removed from GitOps and pruned by Argo CD. The repository is archived, read-only, on GitHub.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {retry.isError && (
+        <p className="flex items-center gap-2 rounded-xl border border-rose/20 bg-rose/10 px-4 py-3 text-sm text-rose">
+          <X size={15} /> {retry.error.message}
+        </p>
+      )}
+
       <Trajectory steps={steps} failed={launch?.status === "failed"} />
 
       <AnimatePresence>
-        {launch?.status === "succeeded" && url && (
+        {launch?.status === "succeeded" && url && !retired && (
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -302,7 +360,7 @@ export function ServiceView() {
             </div>
           </motion.div>
         )}
-        {launch?.status === "failed" && (
+        {launch?.status === "failed" && !retired && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0, x: [0, -8, 8, -4, 4, 0] }}

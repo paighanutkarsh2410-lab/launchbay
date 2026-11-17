@@ -62,7 +62,8 @@ function reducer(state: LaunchState, action: Action): LaunchState {
 }
 
 /** Follows a launch live over Server-Sent Events: a snapshot, then every change. */
-export function useLaunchStream(name: string | undefined): LaunchState {
+/** `launchId` re-subscribes when a retry starts a new launch for the same service. */
+export function useLaunchStream(name: string | undefined, launchId?: string): LaunchState {
   const [state, dispatch] = useReducer(reducer, initial);
   const queryClient = useQueryClient();
 
@@ -89,7 +90,7 @@ export function useLaunchStream(name: string | undefined): LaunchState {
       dispatch({ type: "connected", value: false });
     };
     return () => source.close();
-  }, [name, queryClient]);
+  }, [name, launchId, queryClient]);
 
   return state;
 }
