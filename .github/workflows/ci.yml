@@ -55,4 +55,6 @@ jobs:
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
           skip-dirs: templates
+          # Fail on anything fixable; findings with no upstream fix yet are tracked, not blocking.
+          ignore-unfixed: true
           exit-code: "1"
