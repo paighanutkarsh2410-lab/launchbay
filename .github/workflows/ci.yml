@@ -44,6 +44,36 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  templates:
+    name: Templates render, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Render every template
+        working-directory: services/api
+        run: |
+          pip install -q -e .
+          python tests/render_templates.py "$RUNNER_TEMP/rendered"
+      - name: Python template tests
+        working-directory: ${{ runner.temp }}/rendered/python-fastapi
+        run: pip install -q -r requirements-dev.txt && pytest -q
+      - name: Node template tests
+        working-directory: ${{ runner.temp }}/rendered/node-express
+        run: npm install --no-audit --no-fund && npm test
+      - name: Every template's image builds
+        run: |
+          for dir in "$RUNNER_TEMP"/rendered/*/; do
+            echo "::group::docker build $(basename "$dir")"
+            docker build -q -t "template-check:$(basename "$dir")" "$dir"
+            echo "::endgroup::"
+          done
+
   security:
     name: Trivy scan
     runs-on: ubuntu-latest

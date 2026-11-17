@@ -5,13 +5,13 @@
 #
 # Usage: ./scripts/platform-up.sh [gitops-owner]
 #   gitops-owner: GitHub user or org that owns launchbay-gitops (default: $LAUNCHBAY_GITOPS_OWNER,
-#   then paighanutkarsh2410-lab). Runs in Git Bash on Windows, and on macOS or Linux.
+#   then launchbay-labs). Runs in Git Bash on Windows, and on macOS or Linux.
 # Re-running is safe: every step is idempotent.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLATFORM="$ROOT/platform"
-OWNER="${1:-${LAUNCHBAY_GITOPS_OWNER:-paighanutkarsh2410-lab}}"
+OWNER="${1:-${LAUNCHBAY_GITOPS_OWNER:-launchbay-labs}}"
 CLUSTER=launchbay
 ARGOCD_URL=http://argocd.localtest.me
 

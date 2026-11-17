@@ -82,7 +82,7 @@ WSL 2 on Windows), [kind](https://kind.sigs.k8s.io), kubectl and Helm.
 
 One command, safe to re-run. It creates a kind cluster, installs Traefik as the ingress controller,
 installs Argo CD (pinned and checksum-verified), and applies the ApplicationSet that watches
-[launchbay-gitops](https://github.com/paighanutkarsh2410-lab/launchbay-gitops). It also mints a
+[launchbay-gitops](https://github.com/launchbay-labs/launchbay-gitops). It also mints a
 **read-only** Argo CD API token for Launchbay and writes it to `services/api/.env` (git-ignored).
 
 | What | Where |

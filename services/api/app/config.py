@@ -4,15 +4,19 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+API_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = API_ROOT.parents[1]
 
 
 class Settings(BaseSettings):
     """Configuration, read from LAUNCHBAY_* environment variables or services/api/.env."""
 
-    model_config = SettingsConfigDict(env_prefix="LAUNCHBAY_", env_file=".env", extra="ignore")
+    # Anchored to services/api so the API finds its settings and database from any directory.
+    model_config = SettingsConfigDict(
+        env_prefix="LAUNCHBAY_", env_file=API_ROOT / ".env", extra="ignore"
+    )
 
-    database_url: str = "sqlite+aiosqlite:///./launchbay.db"
+    database_url: str = f"sqlite+aiosqlite:///{(API_ROOT / 'launchbay.db').as_posix()}"
     cors_origins: list[str] = ["http://localhost:5173"]
     templates_dir: Path = REPO_ROOT / "templates"
 
