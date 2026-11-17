@@ -43,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await fail_interrupted_launches(db)
         events = EventBroker()
         catalog = TemplateCatalog(settings.templates_dir)
+        app.state.settings = settings
         app.state.db = db
         app.state.events = events
         app.state.catalog = catalog

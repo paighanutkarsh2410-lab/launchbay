@@ -111,3 +111,11 @@ class Stats(BaseModel):
     launching: int
     failed: int
     median_launch_seconds: float | None
+
+
+class GuardrailOut(BaseModel):
+    name: str
+    title: str
+    summary: str
+    kind: str
+    rules: list[str]

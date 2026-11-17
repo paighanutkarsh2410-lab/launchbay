@@ -49,6 +49,10 @@ spec:
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
+        # Kyverno's guardrails apply to namespaces carrying this label.
+        managedNamespaceMetadata:
+          labels:
+            launchbay.dev/managed: "true"
         retry:
           limit: 5
           backoff: { duration: 10s, factor: 2, maxDuration: 3m }

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sse_starlette.sse import EventSourceResponse
 
+from app.guardrails import load_guardrails
 from app.launcher import Launcher
 from app.models import Launch, Service, ServiceStatus, StepStatus
 from app.providers.base import StepError
@@ -17,6 +18,7 @@ from app.schemas import (
     RESERVED_NAMES,
     DecommissionRequest,
     DecommissionResult,
+    GuardrailOut,
     LaunchOut,
     NameCheck,
     ServiceCreate,
@@ -175,6 +177,14 @@ async def decommission_service(
     except StepError as error:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(error)) from error
     return DecommissionResult(name=name, repository=body.repository, steps=steps)
+
+
+@router.get("/guardrails", response_model=list[GuardrailOut])
+async def list_guardrails(request: Request) -> list[GuardrailOut]:
+    """The policies Kyverno enforces on every launched namespace."""
+    return [
+        GuardrailOut(**vars(g)) for g in load_guardrails(request.app.state.settings.policies_dir)
+    ]
 
 
 @router.get("/stats", response_model=Stats)

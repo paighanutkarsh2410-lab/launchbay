@@ -63,7 +63,7 @@ used for short, torn-down demos.
 ## Phases
 
 1. Core loop: portal, launches, repo + CI, GitOps, Argo CD on kind
-2. Guardrails: Kyverno policies, signed-image enforcement
+2. Guardrails: Kyverno CEL policies (signed images, trusted registry, pod security, probes and resources)
 3. Cloud resources: Terraform modules on LocalStack, AWS for demos
 4. Catalog and AI helper: scorecards, failure explanations
 5. Polish: docs, screenshots, demo

@@ -1,0 +1,7 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Values
+# The launched namespace the test pods live in, labeled as the ApplicationSet labels it.
+namespaceSelector:
+  - name: payments
+    labels:
+      launchbay.dev/managed: "true"

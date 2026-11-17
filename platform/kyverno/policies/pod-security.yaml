@@ -1,0 +1,46 @@
+# Non-root pods that cannot gain privileges or reach into the host.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: launchbay-pod-security
+  annotations:
+    launchbay.dev/title: Hardened pods
+    launchbay.dev/rules: |
+      Runs as a non-root user
+      No privilege escalation; every Linux capability dropped
+      No host network, PID, IPC or host paths
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  autogen:
+    podControllers:
+      controllers: [deployments]
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        launchbay.dev/managed: "true"
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  validations:
+    - expression: >-
+        has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) &&
+        object.spec.securityContext.runAsNonRoot == true
+      message: "Pods must set securityContext.runAsNonRoot: true."
+    - expression: >-
+        object.spec.containers.all(c, has(c.securityContext) &&
+          has(c.securityContext.allowPrivilegeEscalation) && c.securityContext.allowPrivilegeEscalation == false &&
+          has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+          'ALL' in c.securityContext.capabilities.drop &&
+          (!has(c.securityContext.privileged) || c.securityContext.privileged == false))
+      message: "Containers must disallow privilege escalation, drop ALL capabilities and not be privileged."
+    - expression: >-
+        !(has(object.spec.hostNetwork) && object.spec.hostNetwork) &&
+        !(has(object.spec.hostPID) && object.spec.hostPID) &&
+        !(has(object.spec.hostIPC) && object.spec.hostIPC) &&
+        (!has(object.spec.volumes) || object.spec.volumes.all(v, !has(v.hostPath)))
+      message: "Host network, PID, IPC and hostPath volumes are not allowed."

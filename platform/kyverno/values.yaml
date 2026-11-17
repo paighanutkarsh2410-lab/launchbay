@@ -1,0 +1,20 @@
+# Kyverno: admission control for every namespace Launchbay launches into.
+admissionController:
+  replicas: 1
+  container:
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 384Mi }
+    extraArgs:
+      # Registry credentials for reading cosign signatures of private GHCR images.
+      imagePullSecrets: ghcr-pull
+backgroundController:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 192Mi }
+reportsController:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 192Mi }
+cleanupController:
+  enabled: false

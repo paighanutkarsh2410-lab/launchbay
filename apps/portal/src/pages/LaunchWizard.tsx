@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Burst } from "@/components/Burst";
 import { GlowCard } from "@/components/GlowCard";
+import { GuardrailChecklist } from "@/components/Guardrails";
 import { MagneticButton } from "@/components/MagneticButton";
 import { TemplateIcon } from "@/components/TemplateIcon";
 import { api, type Template } from "@/lib/api";
@@ -366,6 +367,7 @@ export function LaunchWizard() {
                         </div>
                       ))}
                     </div>
+                    <GuardrailChecklist />
                     {create.isError && (
                       <p className="mt-6 flex items-center gap-2 rounded-xl border border-rose/20 bg-rose/10 px-4 py-3 text-sm text-rose">
                         <CircleAlert size={15} /> {create.error.message}

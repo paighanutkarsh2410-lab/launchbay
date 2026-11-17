@@ -4,6 +4,7 @@ import { motion, type Variants } from "motion/react";
 import { Link, useNavigate } from "react-router";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GlowCard } from "@/components/GlowCard";
+import { GuardrailsSection } from "@/components/Guardrails";
 import { LaunchPad } from "@/components/LaunchPad";
 import { MagneticButton } from "@/components/MagneticButton";
 import { StatusBadge } from "@/components/StatusDot";
@@ -167,6 +168,8 @@ export function Overview() {
           ))}
         </div>
       </section>
+
+      <GuardrailsSection />
 
       {/* Recent launches */}
       <section>

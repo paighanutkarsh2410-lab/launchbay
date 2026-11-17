@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite+aiosqlite:///{(API_ROOT / 'launchbay.db').as_posix()}"
     cors_origins: list[str] = ["http://localhost:5173"]
     templates_dir: Path = REPO_ROOT / "templates"
+    policies_dir: Path = REPO_ROOT / "platform" / "kyverno" / "policies"
 
     # "demo" simulates every stage; "github" does it for real.
     provider: Literal["demo", "github"] = "demo"

@@ -97,6 +97,25 @@ jobs:
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with: { image-ref: "template-check:static-site", severity: "CRITICAL,HIGH", ignore-unfixed: true, exit-code: "1" }
 
+  guardrails:
+    name: Guardrail policies
+    runs-on: ubuntu-latest
+    env:
+      KYVERNO_VERSION: v1.19.2 # matches the cluster's Kyverno (platform-up.sh)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the Kyverno CLI (checksum-verified)
+        run: |
+          base="https://github.com/kyverno/kyverno/releases/download/$KYVERNO_VERSION"
+          file="kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz"
+          curl -fsSLO "$base/$file" && curl -fsSLO "$base/checksums.txt"
+          grep " $file\$" checksums.txt | sha256sum --check --strict
+          tar -xzf "$file" kyverno && sudo mv kyverno /usr/local/bin/
+      - name: Every policy admits and rejects what it should
+        run: kyverno test platform/kyverno/tests
+      - name: Platform scripts parse
+        run: for s in scripts/*.sh; do bash -n "$s"; done
+
   security:
     name: Trivy scan
     runs-on: ubuntu-latest

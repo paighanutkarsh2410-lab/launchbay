@@ -47,6 +47,12 @@ happen: logs scroll in, the timeline fills, and the rocket flies.
   that passed, following the newest commit so a pushed fix is picked up. Decommissioning removes
   the GitOps manifest (Argo CD prunes everything) and archives or deletes the repo, behind a
   type-the-name confirmation.
+- **Guardrails, enforced.** Kyverno admits a workload only if its image is signed with cosign by
+  *that service's own* CI on `main`, comes from `ghcr.io/launchbay-labs` with a pinned tag, runs
+  non-root without privilege escalation or host access, and declares resources and health probes.
+  The policies use Kyverno's CEL-based `ValidatingPolicy` and `ImageValidatingPolicy`; CI tests them
+  with `kyverno test`, `scripts/verify-guardrails.sh` proves them on the live cluster, and a blocked
+  deploy names the rule it broke.
 - **Provider architecture.** The launcher talks to the world only through providers. `GitHubProvider`
   does it for real; `DemoProvider` simulates every stage so the portal runs with no credentials.
 - **GitHub App, not tokens.** Scoped permissions and short-lived installation tokens.
@@ -84,7 +90,8 @@ WSL 2 on Windows), [kind](https://kind.sigs.k8s.io), kubectl and Helm.
 ./scripts/platform-up.sh
 ```
 
-One command, safe to re-run. It creates a kind cluster, installs Traefik as the ingress controller,
+One command, safe to re-run. It creates a kind cluster, installs Traefik as the ingress controller
+and Kyverno with Launchbay's guardrails,
 installs Argo CD (pinned and checksum-verified), and applies the ApplicationSet that watches
 [launchbay-gitops](https://github.com/launchbay-labs/launchbay-gitops). It also mints a
 **read-only** Argo CD API token for Launchbay and writes it to `services/api/.env` (git-ignored).
@@ -99,6 +106,12 @@ Launched services push **private** images to GHCR. To let the cluster pull them,
 [classic token with only `read:packages`](https://github.com/settings/tokens/new?scopes=read:packages&description=launchbay-ghcr-pull)
 and save it as `~/.launchbay/ghcr-pull-token` before running the script. It is handed to the node's
 kubelet and never stored in Git.
+
+Check the guardrails against the live cluster at any time (server-side dry runs, nothing is created):
+
+```bash
+./scripts/verify-guardrails.sh
+```
 
 `localtest.me` is a public DNS name that always resolves to `127.0.0.1`, so every service gets a
 real hostname with no hosts-file edits. Tear everything down with `kind delete cluster --name launchbay`.
@@ -117,6 +130,8 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 | `templates/` | Golden-path templates rendered into new repos |
 | `platform/` | kind, Traefik and Argo CD configuration, and the ApplicationSet |
 | `scripts/platform-up.sh` | Brings the whole platform up locally |
+| `platform/kyverno/` | Guardrail policies and their `kyverno test` suite |
+| `scripts/verify-guardrails.sh` | Proves the guardrails on the live cluster |
 | `docs/architecture.md` | Design and roadmap |
 
 ## Roadmap
@@ -125,6 +140,6 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 - [x] GitOps repo and Argo CD ApplicationSet on kind, behind Traefik
 - [x] GitHub App on the `launchbay-labs` org: real launches, click to live URL in about 2.5 minutes
 - [x] Retry from the failed stage and decommission (archive or delete) from the portal
-- [ ] **Phase 2**: Kyverno guardrails, signed-image enforcement
+- [x] **Phase 2**: Kyverno guardrails (CEL policies), signed-image enforcement, policy tests in CI
 - [ ] **Phase 3**: cloud resources with Terraform on LocalStack
 - [ ] **Phase 4**: service scorecards and an AI helper that explains failed launches

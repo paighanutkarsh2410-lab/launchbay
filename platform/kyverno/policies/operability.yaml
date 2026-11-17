@@ -1,0 +1,35 @@
+# Schedulable, self-healing containers: resource requests, a memory limit and health probes.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: launchbay-require-operability
+  annotations:
+    launchbay.dev/title: Resources and health probes
+    launchbay.dev/rules: |
+      CPU and memory requests and a memory limit
+      Readiness and liveness probes
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  autogen:
+    podControllers:
+      controllers: [deployments]
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        launchbay.dev/managed: "true"
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  validations:
+    - expression: >-
+        object.spec.containers.all(c, has(c.resources) &&
+          has(c.resources.requests) && 'cpu' in c.resources.requests && 'memory' in c.resources.requests &&
+          has(c.resources.limits) && 'memory' in c.resources.limits)
+      message: "Containers need cpu and memory requests and a memory limit."
+    - expression: "object.spec.containers.all(c, has(c.readinessProbe) && has(c.livenessProbe))"
+      message: "Containers need readiness and liveness probes."

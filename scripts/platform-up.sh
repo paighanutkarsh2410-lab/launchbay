@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Brings up the whole Launchbay platform on this machine:
-#   kind cluster -> Traefik ingress -> Argo CD -> ApplicationSet watching launchbay-gitops
+#   kind cluster -> Traefik ingress -> Kyverno guardrails -> Argo CD -> ApplicationSet
 # and writes Argo CD credentials for the API to services/api/.env.
 #
 # Usage: ./scripts/platform-up.sh [gitops-owner]
@@ -20,6 +20,7 @@ ARGOCD_VERSION=v3.5.7
 ARGOCD_COMMIT=6d732962f61a99c2a0f221fd26b9aac7c83bcf18
 ARGOCD_SHA256=09bfbb9041b4a8503c6e4fa22cf41c403fa62be17526de353648a4551f5beb77
 TRAEFIK_CHART_VERSION=42.3.2
+KYVERNO_CHART_VERSION=3.9.2  # Kyverno v1.19.2
 
 step() { printf '\n\033[1;35m▸ %s\033[0m\n' "$*"; }
 
@@ -55,6 +56,25 @@ helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
 helm repo update traefik >/dev/null
 helm upgrade --install traefik traefik/traefik --version "$TRAEFIK_CHART_VERSION" \
   --namespace traefik --create-namespace -f "$PLATFORM/traefik/values.yaml" --wait --timeout 5m >/dev/null
+
+step "Kyverno $KYVERNO_CHART_VERSION and Launchbay's guardrails"
+kubectl create namespace kyverno --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+if [ -f "$PULL_TOKEN_FILE" ]; then
+  # Kyverno reads cosign signatures from the same private registry the services pull from.
+  kubectl -n kyverno create secret docker-registry ghcr-pull --docker-server=ghcr.io \
+    --docker-username="$PULL_USER" --docker-password="$(tr -d '\r\n' < "$PULL_TOKEN_FILE")" \
+    --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+fi
+helm repo add kyverno https://kyverno.github.io/kyverno >/dev/null 2>&1 || true
+helm repo update kyverno >/dev/null
+helm upgrade --install kyverno kyverno/kyverno --version "$KYVERNO_CHART_VERSION" \
+  --namespace kyverno -f "$PLATFORM/kyverno/values.yaml" --wait --timeout 6m >/dev/null
+kubectl apply -f "$PLATFORM/kyverno/policies/" >/dev/null
+for policy in $(kubectl get validatingpolicies,imagevalidatingpolicies -o name); do
+  kubectl wait --for=jsonpath='{.status.conditionStatus.ready}'=true "$policy" --timeout=120s >/dev/null
+done
+kubectl get validatingpolicies,imagevalidatingpolicies \
+  -o custom-columns='POLICY:.metadata.name,KIND:.kind,ACTIONS:.spec.validationActions,READY:.status.conditionStatus.ready'
 
 step "Argo CD $ARGOCD_VERSION"
 WORK="$(mktemp -d)"

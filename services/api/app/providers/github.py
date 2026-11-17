@@ -6,6 +6,7 @@ organization but not in a personal account, which is also how platform teams usu
 
 import asyncio
 import base64
+import re
 import time
 from collections.abc import Awaitable, Callable
 
@@ -32,6 +33,28 @@ async def poll[T](
             return result
         await asyncio.sleep(interval)
     raise StepError(f"Timed out after {int(limit)}s waiting for {what}")
+
+
+DENIED = "denied the request: "
+
+
+def policy_denial(status: dict) -> str | None:
+    """The guardrail message when Kyverno refused part of an Argo CD sync, else None.
+
+    Argo CD keeps retrying a refused sync, so the denial shows up in the operation message and
+    in each refused resource's sync result rather than as a final failed phase."""
+    operation = status.get("operationState") or {}
+    messages = [operation.get("message") or ""]
+    for resource in (operation.get("syncResult") or {}).get("resources") or []:
+        if resource.get("status") == "SyncFailed":
+            messages.append(resource.get("message") or "")
+    for message in messages:
+        if DENIED in message:
+            reason = message.split(DENIED, 1)[1]
+            # "Policy launchbay-pod-security failed: Pods must ..." -> "Pods must ..."
+            reason = re.sub(r"Policy [a-z0-9-]+ (?:failed|error): ", "", reason)
+            return reason.strip().rstrip(".") + "."
+    return None
 
 
 class GitHubApp:
@@ -294,6 +317,8 @@ class GitHubProvider(Provider):
                     sync = status.get("sync", {}).get("status", "Unknown")
                     health = status.get("health", {}).get("status", "Unknown")
                     state = f"Sync: {sync} · Health: {health}"
+                    if denial := policy_denial(status):
+                        raise StepError(f"Blocked by a cluster guardrail: {denial}")
                     if health == "Degraded":
                         raise StepError("Argo CD reports the application as Degraded")
                     if sync == "Synced" and health == "Healthy":

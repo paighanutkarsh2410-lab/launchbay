@@ -69,6 +69,14 @@ export interface NewService {
   description: string;
 }
 
+export interface Guardrail {
+  name: string;
+  title: string;
+  summary: string;
+  kind: string;
+  rules: string[];
+}
+
 export interface DecommissionResult {
   name: string;
   repository: "archive" | "delete";
@@ -105,6 +113,7 @@ export const api = {
   services: () => request<Service[]>("/services"),
   service: (name: string) => request<ServiceDetail>(`/services/${name}`),
   stats: () => request<Stats>("/stats"),
+  guardrails: () => request<Guardrail[]>("/guardrails"),
   checkName: (name: string) =>
     request<NameCheck>(`/services/check-name?name=${encodeURIComponent(name)}`),
   retry: (name: string) => request<Service>(`/services/${name}/retry`, { method: "POST" }),

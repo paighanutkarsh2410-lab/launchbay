@@ -1,0 +1,53 @@
+# Every launchbay-labs image must carry a keyless cosign signature made by the CI workflow on
+# main of its own repository. Unsigned images, or images signed by any other identity, are denied.
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: launchbay-require-signed-images
+  annotations:
+    launchbay.dev/title: Signed images only
+    launchbay.dev/rules: |
+      Signed with cosign, keyless, by the service's own CI workflow on main
+      Signature recorded in the public Rekor transparency log
+spec:
+  validationActions: [Deny]
+  webhookConfiguration:
+    timeoutSeconds: 30
+  evaluation:
+    background:
+      enabled: false
+  autogen:
+    podControllers:
+      controllers: [deployments]
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        launchbay.dev/managed: "true"
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  matchImageReferences:
+    - glob: "ghcr.io/launchbay-labs/*"
+  # Registry credentials (kyverno namespace) for reading signatures of private images.
+  credentials:
+    secrets: [ghcr-pull]
+  validationConfigurations:
+    # Launchbay deploys by commit tag; a rewrite to digests would make Argo CD see drift.
+    mutateDigest: false
+    verifyDigest: false
+    required: true
+  attestors:
+    - name: launchbayPipeline
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://token.actions.githubusercontent.com
+              subjectRegExp: '^https://github\.com/launchbay-labs/[a-z0-9-]+/\.github/workflows/ci\.yml@refs/heads/main$'
+        ctlog:
+          url: https://rekor.sigstore.dev
+  validations:
+    - expression: >-
+        images.containers.map(image, verifyImageSignatures(image, [attestors.launchbayPipeline])).all(e, e > 0)
+      message: "Image is not signed by its Launchbay pipeline (cosign keyless, ci.yml on main)."
