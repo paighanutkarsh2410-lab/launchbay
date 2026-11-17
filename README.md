@@ -91,6 +91,11 @@ installs Argo CD (pinned and checksum-verified), and applies the ApplicationSet 
 | Any launched service | http://&lt;name&gt;.localtest.me |
 | Example service | http://hello-launchbay.localtest.me |
 
+Launched services push **private** images to GHCR. To let the cluster pull them, create a
+[classic token with only `read:packages`](https://github.com/settings/tokens/new?scopes=read:packages&description=launchbay-ghcr-pull)
+and save it as `~/.launchbay/ghcr-pull-token` before running the script. It is handed to the node's
+kubelet and never stored in Git.
+
 `localtest.me` is a public DNS name that always resolves to `127.0.0.1`, so every service gets a
 real hostname with no hosts-file edits. Tear everything down with `kind delete cluster --name launchbay`.
 

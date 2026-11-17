@@ -10,6 +10,8 @@ spec:
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
+        # Check Git every 30s instead of the default 3 minutes, so launches deploy quickly.
+        requeueAfterSeconds: 30
         repoURL: https://github.com/GITOPS_OWNER/launchbay-gitops.git
         revision: main
         files:

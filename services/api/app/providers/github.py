@@ -227,7 +227,9 @@ class GitHubProvider(Provider):
             async def healthy() -> bool | None:
                 nonlocal last
                 response = await argo.get(f"/api/v1/applications/{request.name}")
-                if response.status_code == 404:
+                # Argo CD answers 403, not 404, for apps a read-only account cannot see yet,
+                # including ones the ApplicationSet has not generated.
+                if response.status_code in (403, 404):
                     state = "Waiting for the ApplicationSet to generate the Application"
                 else:
                     response.raise_for_status()

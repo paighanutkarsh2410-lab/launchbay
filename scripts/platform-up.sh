@@ -34,6 +34,22 @@ if ! kind get clusters | grep -qx "$CLUSTER"; then
 fi
 kubectl config use-context "kind-$CLUSTER" >/dev/null
 
+step "Registry access"
+# Launched services push private images to GHCR. A classic token with only read:packages, kept
+# outside the repo, is given to the node's kubelet so every namespace can pull them.
+PULL_TOKEN_FILE="${LAUNCHBAY_GHCR_TOKEN_FILE:-$HOME/.launchbay/ghcr-pull-token}"
+if [ -f "$PULL_TOKEN_FILE" ]; then
+  PULL_USER="${LAUNCHBAY_GHCR_USER:-$(gh api user --jq .login 2>/dev/null || echo launchbay)}"
+  AUTH="$(printf '%s:%s' "$PULL_USER" "$(tr -d '\r\n' < "$PULL_TOKEN_FILE")" | base64 | tr -d '\n')"
+  NODE="$CLUSTER-control-plane"
+  printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$AUTH" \
+    | docker exec -i "$NODE" sh -c 'umask 077 && cat > /var/lib/kubelet/config.json'
+  docker exec "$NODE" systemctl restart kubelet
+  echo "Kubelet can pull from ghcr.io (token from $PULL_TOKEN_FILE)"
+else
+  echo "No $PULL_TOKEN_FILE: private GHCR images will not pull. See README > Run the platform."
+fi
+
 step "Traefik ingress (chart $TRAEFIK_CHART_VERSION)"
 helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
 helm repo update traefik >/dev/null
