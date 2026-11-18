@@ -30,6 +30,13 @@ Argo CD deploy. The two-minute wait for CI is fast-forwarded.
 
 </div>
 
+<details>
+<summary><b>Watch the full two-minute demo</b></summary>
+
+https://github.com/user-attachments/assets/57b4e48f-628e-4c29-b804-d1e0226004dd
+
+</details>
+
 ---
 
 ## Why
