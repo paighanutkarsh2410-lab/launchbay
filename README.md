@@ -25,7 +25,7 @@ pipeline, and lets Argo CD put it live.
 
 <sub>A real launch: a GitHub repo, Terraform resources, a tested, scanned and signed build, and an
 Argo CD deploy. The two-minute wait for CI is fast-forwarded.
-<a href="docs/media/demo/launchbay-demo.mp4">Watch the full demo (MP4)</a> or
+<a href="https://launchbay-593.pages.dev/media/launchbay-demo.mp4">Watch the full demo</a> or
 <a href="https://launchbay-593.pages.dev">try the live demo</a>.</sub>
 
 </div>

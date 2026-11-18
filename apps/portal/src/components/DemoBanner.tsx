@@ -40,7 +40,7 @@ export function DemoBanner() {
     );
   }
   if (!info?.public_demo) return null;
-  const video = `${info.project_url}/blob/main/docs/media/demo/launchbay-demo.mp4`;
+  const video = "/media/launchbay-demo.mp4";
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
