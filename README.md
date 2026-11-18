@@ -147,7 +147,9 @@ through a launch without credentials. It is seeded from this Launchbay's real se
 for the open internet (read-only showcase, rate limits, automatic cleanup). How it is hosted for
 free, on Cloudflare Pages and Render: [docs/public-demo.md](docs/public-demo.md).
 
-## Run it
+## Develop
+
+For working on Launchbay itself, run the API and portal in demo mode (no cluster or accounts):
 
 You need Python 3.12 and Node 22.
 
@@ -177,35 +179,29 @@ With both present Claude is used; set `LAUNCHBAY_EXPLAINER=gemini` (or `claude`,
 Open http://localhost:5173 and launch a service. Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> for
 the command palette.
 
-## Run the platform
+## Run your own
 
-Real launches deploy to a Kubernetes cluster on your own machine. You need Docker (Docker Desktop on
-WSL 2 on Windows), [kind](https://kind.sigs.k8s.io), kubectl and Helm, plus
-[Terraform](https://developer.hashicorp.com/terraform/install) 1.17 for cloud resources.
+Run the real thing on your machine, launching into your own GitHub organization:
 
 ```bash
-./scripts/platform-up.sh
+./launchbay up --org <your-org>
 ```
 
-One command, safe to re-run. It creates a kind cluster, installs Traefik as the ingress controller,
-the Moto AWS emulator and Kyverno with Launchbay's guardrails,
-installs Argo CD (pinned and checksum-verified), and applies the ApplicationSet that watches
-[launchbay-gitops](https://github.com/launchbay-labs/launchbay-gitops). It also mints a
-**read-only** Argo CD API token for Launchbay and writes it to `services/api/.env` (git-ignored),
-switching cloud resources from simulated to real Terraform when `terraform` is installed. Terraform
-state lives in `~/.launchbay/cloud/<service>`, outside the repo.
+One command brings up the platform (a kind cluster with Traefik, the AWS emulator, Kyverno and Argo
+CD, pinned and checksum-verified), installs the API, builds the portal and opens
+http://localhost:8000/setup. There, **Connect GitHub** creates a GitHub App for your organization
+through GitHub's App Manifest flow and installs it: no App ids or keys to copy, and the key stays in
+`~/.launchbay`. Launchbay then creates your `launchbay-gitops` repo and switches from demo mode to
+real launches. The full guide, including private images, AI keys and removal:
+[docs/self-hosting.md](docs/self-hosting.md).
 
 | What | Where |
 |---|---|
+| Launchbay | http://localhost:8000 |
 | Argo CD | http://argocd.localtest.me |
 | Any launched service | http://&lt;name&gt;.localtest.me |
 | AWS emulator (Moto) | http://aws.localtest.me |
 | A service's view of its resources (Python template) | http://&lt;name&gt;.localtest.me/cloud |
-
-Launched services push **private** images to GHCR. To let the cluster pull them, create a
-[classic token with only `read:packages`](https://github.com/settings/tokens/new?scopes=read:packages&description=launchbay-ghcr-pull)
-and save it as `~/.launchbay/ghcr-pull-token` before running the script. It is handed to the node's
-kubelet and never stored in Git.
 
 Check the guardrails against the live cluster at any time (server-side dry runs, nothing is created):
 
@@ -247,7 +243,9 @@ and video in `docs/media` from a running Launchbay.
 | `platform/` | kind, Traefik and Argo CD configuration, and the ApplicationSet |
 | `platform/terraform/` | Terraform modules (bucket, queue, table) and the per-service root, with tests |
 | `platform/cloud/` | The Moto AWS emulator, run in the cluster |
-| `scripts/platform-up.sh` | Brings the whole platform up locally |
+| `launchbay` | One command to install, start and stop a self-hosted Launchbay |
+| `scripts/platform-up.sh` | Brings up the cluster and platform services (called by `launchbay up`) |
+| `platform/gitops/` | What a new organization's `launchbay-gitops` repo starts from |
 | `platform/kyverno/` | Guardrail policies and their `kyverno test` suite |
 | `scripts/verify-guardrails.sh` | Proves the guardrails on the live cluster |
 | `docs/architecture.md` | Design and roadmap |
@@ -265,3 +263,5 @@ and video in `docs/media` from a running Launchbay.
 - [x] **Phase 4**: service scorecards and an AI helper (Gemini or Claude) that explains failed launches
 - [x] **Phase 5**: polish (phone layouts, accessibility, read-only root filesystems), Playwright smoke
   tests, screenshots and a demo video
+- [x] Public demo on Cloudflare Pages and Render, free; self-hosting with `./launchbay up` and
+  one-click GitHub connect

@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# Launchbay on your own machine, in one command.
+#
+#   ./launchbay up [--org ORG] [--port PORT] [--skip-platform]
+#       Checks the tools it needs, brings up the platform (kind, Argo CD, Kyverno, the AWS
+#       emulator), installs the API, builds the portal and starts them on one port. Then open
+#       http://localhost:PORT/setup and click "Connect GitHub".
+#   ./launchbay down       Stops Launchbay (the cluster keeps running).
+#   ./launchbay status     Is it running, and in which mode?
+#   ./launchbay logs       Follows the API's log.
+#
+# ORG is the GitHub organization Launchbay launches into (a free one works). Keys and state live
+# in ~/.launchbay, never in this repository. Runs on macOS, Linux and Git Bash on Windows.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+HOME_DIR="${LAUNCHBAY_HOME:-$HOME/.launchbay}"
+ENV_FILE="$ROOT/services/api/.env"
+PID_FILE="$HOME_DIR/launchbay.pid"
+LOG_FILE="$HOME_DIR/logs/api.log"
+PORT="${LAUNCHBAY_PORT:-8000}"
+
+say() { printf '\033[1;35m▸\033[0m %s\n' "$*"; }
+ok() { printf '  \033[32m✔\033[0m %s\n' "$*"; }
+fail() { printf '  \033[31m✘\033[0m %s\n' "$*" >&2; }
+die() { fail "$*"; exit 1; }
+
+env_get() { [ -f "$ENV_FILE" ] && sed -n "s/^LAUNCHBAY_$1=//p" "$ENV_FILE" | tail -1 || true; }
+env_set() {
+  touch "$ENV_FILE"
+  grep -v "^LAUNCHBAY_$1=" "$ENV_FILE" > "$ENV_FILE.tmp" || true
+  echo "LAUNCHBAY_$1=$2" >> "$ENV_FILE.tmp"
+  mv "$ENV_FILE.tmp" "$ENV_FILE"
+  chmod 600 "$ENV_FILE" 2>/dev/null || true
+}
+
+python_bin() {
+  for candidate in python3.12 python3 python; do
+    if command -v "$candidate" >/dev/null &&
+      "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 12))' 2>/dev/null; then
+      echo "$candidate"; return
+    fi
+  done
+}
+
+venv_python() {
+  local venv="$ROOT/services/api/.venv"
+  if [ -x "$venv/bin/python" ]; then echo "$venv/bin/python"; else echo "$venv/Scripts/python.exe"; fi
+}
+
+# The process listening on a port, on any of the three systems.
+pid_on_port() {
+  if command -v lsof >/dev/null; then
+    lsof -tiTCP:"$1" -sTCP:LISTEN 2>/dev/null | head -1
+  elif command -v netstat >/dev/null; then
+    netstat -ano 2>/dev/null | awk -v p=":$1" '$2 ~ p"$" && $4 == "LISTENING" {print $5; exit}'
+  fi
+}
+
+stop_pid() {
+  local pid="$1"
+  [ -n "$pid" ] || return 0
+  kill "$pid" 2>/dev/null || taskkill //PID "$pid" //F >/dev/null 2>&1 || true
+}
+
+check_tools() {
+  say "Checking tools"
+  local missing=0
+  for tool in docker kind kubectl helm curl node npm; do
+    if command -v "$tool" >/dev/null; then ok "$tool"; else fail "$tool is not installed"; missing=1; fi
+  done
+  if [ -n "$(python_bin)" ]; then ok "python $("$(python_bin)" -c 'import platform; print(platform.python_version())')"
+  else fail "Python 3.12 or newer is not installed"; missing=1; fi
+  if command -v node >/dev/null && [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
+    fail "Node 22 or newer is needed (found $(node -v))"; missing=1
+  fi
+  if command -v terraform >/dev/null; then ok "terraform (cloud resources are real, on the AWS emulator)"
+  else printf '  \033[33m•\033[0m terraform not found: cloud resources will be simulated\n'; fi
+  if [ "$missing" = 1 ]; then
+    cat >&2 <<'EOF'
+
+  Install what's missing, then run ./launchbay up again:
+    Docker Desktop  https://docs.docker.com/get-docker/   (WSL 2 backend on Windows)
+    kind            https://kind.sigs.k8s.io/docs/user/quick-start/#installation
+    kubectl, Helm   https://kubernetes.io/docs/tasks/tools/  ·  https://helm.sh/docs/intro/install/
+    Python 3.12+    https://www.python.org/downloads/
+    Node 22+        https://nodejs.org/
+    Terraform       https://developer.hashicorp.com/terraform/install (optional)
+EOF
+    exit 1
+  fi
+  docker info >/dev/null 2>&1 || die "Docker is installed but not running. Start it and try again."
+}
+
+up() {
+  local org="" skip_platform=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --org) org="$2"; shift 2 ;;
+      --port) PORT="$2"; shift 2 ;;
+      --skip-platform) skip_platform=1; shift ;;
+      *) die "Unknown option $1 (see ./launchbay --help)" ;;
+    esac
+  done
+  check_tools
+  mkdir -p "$HOME_DIR/logs"
+
+  org="${org:-$(env_get GITHUB_OWNER)}"
+  if [ -z "$org" ] && [ -t 0 ]; then
+    printf '\nWhich GitHub organization should Launchbay launch services into?\n'
+    printf '(Create a free one at https://github.com/account/organizations/new if you need to.)\n> '
+    read -r org
+  fi
+  [ -n "$org" ] || die "Pass the GitHub organization: ./launchbay up --org <org>"
+  env_set GITHUB_OWNER "$org"
+  ok "GitHub organization: $org"
+
+  if [ "$skip_platform" = 0 ]; then
+    say "Platform (a few minutes the first time)"
+    "$ROOT/scripts/platform-up.sh" "$org"
+  fi
+
+  say "API"
+  local venv="$ROOT/services/api/.venv"
+  [ -d "$venv" ] || "$(python_bin)" -m venv "$venv"
+  "$(venv_python)" -m pip install --quiet --disable-pip-version-check -e "$ROOT/services/api"     > "$HOME_DIR/logs/install.log" 2>&1 || die "Installing the API failed; see $HOME_DIR/logs/install.log"
+  ok "installed"
+
+  say "Portal"
+  (cd "$ROOT/apps/portal" && { [ -d node_modules ] || npm ci --no-audit --no-fund --loglevel=error; } && npm run --silent build >/dev/null)
+  ok "built"
+
+  say "Starting Launchbay on http://localhost:$PORT"
+  stop_launchbay quiet
+  local busy
+  busy="$(pid_on_port "$PORT")"
+  [ -z "$busy" ] || die "Port $PORT is in use (pid $busy). Free it or pass --port."
+  # Run-time settings go in the environment, not .env, so a development setup is untouched.
+  (
+    cd "$ROOT"
+    export LAUNCHBAY_PORTAL_DIST="$ROOT/apps/portal/dist"
+    export LAUNCHBAY_PORTAL_URL="http://localhost:$PORT"
+    export LAUNCHBAY_PUBLIC_API_URL="http://localhost:$PORT"
+    export LAUNCHBAY_CORS_ORIGINS="[\"http://localhost:$PORT\"]"
+    nohup "$(venv_python)" -m uvicorn app.main:app --app-dir services/api \
+      --host 127.0.0.1 --port "$PORT" > "$LOG_FILE" 2>&1 &
+    echo "$!" > "$PID_FILE"
+  )
+  for _ in $(seq 1 60); do
+    curl -fs "http://localhost:$PORT/api/healthz" >/dev/null 2>&1 && break
+    sleep 1
+  done
+  curl -fs "http://localhost:$PORT/api/healthz" >/dev/null || die "The API did not start; see $LOG_FILE"
+  echo "$PORT" > "$HOME_DIR/launchbay.port"
+
+  local mode url
+  mode="$(curl -fs "http://localhost:$PORT/api/info" | sed -E 's/.*"mode":"([a-z]+)".*/\1/')"
+  url="http://localhost:$PORT$([ "$mode" = github ] || echo /setup)"
+  printf '\n\033[1;32mLaunchbay is running:\033[0m %s\n' "$url"
+  [ "$mode" = github ] || printf 'Click "Connect GitHub" there to switch from demo mode to real launches.\n'
+  printf 'Stop it with ./launchbay down. Logs: %s\n' "$LOG_FILE"
+  if [ -n "${LAUNCHBAY_NO_BROWSER:-}" ]; then :
+  elif command -v open >/dev/null; then open "$url"
+  elif command -v xdg-open >/dev/null; then xdg-open "$url" >/dev/null 2>&1 || true
+  elif command -v start >/dev/null; then start "" "$url" 2>/dev/null || true
+  fi
+}
+
+stop_launchbay() {
+  local port pid
+  port="$(cat "$HOME_DIR/launchbay.port" 2>/dev/null || echo "$PORT")"
+  [ -f "$PID_FILE" ] && stop_pid "$(cat "$PID_FILE")"
+  # The recorded pid can be a wrapper on Windows; stop whatever still listens on the port.
+  pid="$(pid_on_port "$port")"
+  if [ -n "$pid" ] && [ -f "$PID_FILE" ]; then stop_pid "$pid"; fi
+  rm -f "$PID_FILE"
+  [ "${1:-}" = quiet ] || ok "Stopped Launchbay (the cluster keeps running; kind delete cluster --name launchbay removes it)"
+}
+
+status() {
+  local port
+  port="$(cat "$HOME_DIR/launchbay.port" 2>/dev/null || echo "$PORT")"
+  if info="$(curl -fs "http://localhost:$port/api/info" 2>/dev/null)"; then
+    ok "Running at http://localhost:$port"
+    echo "  $info"
+  else
+    fail "Not running (start it with ./launchbay up)"
+  fi
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx launchbay-control-plane; then
+    ok "Cluster 'launchbay' is running"
+  else fail "No 'launchbay' cluster"; fi
+}
+
+case "${1:-}" in
+  up) shift; up "$@" ;;
+  down) stop_launchbay ;;
+  status) status ;;
+  logs) tail -f "$LOG_FILE" ;;
+  -h|--help|help|"") sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) die "Unknown command $1 (up, down, status, logs)" ;;
+esac

@@ -172,7 +172,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export interface SetupCheck {
+  ok: boolean | null;
+  detail: string;
+}
+
+export interface SetupStatus {
+  mode: "demo" | "github";
+  owner: string | null;
+  app_slug: string | null;
+  platform: SetupCheck;
+  github: SetupCheck;
+  gitops: SetupCheck;
+  registry: SetupCheck;
+  cloud: SetupCheck;
+  assistant: SetupCheck;
+}
+
 export interface Info {
+  mode: "demo" | "github";
+  github_owner: string | null;
   public_demo: boolean;
   demo_ttl_hours: number | null;
   project_url: string;
@@ -181,6 +200,12 @@ export interface Info {
 
 export const api = {
   info: () => request<Info>("/info"),
+  setup: () => request<SetupStatus>("/setup"),
+  githubManifest: (owner: string) =>
+    request<{ action: string; manifest: object }>("/setup/github/manifest", {
+      method: "POST",
+      body: JSON.stringify({ owner }),
+    }),
   templates: () => request<Template[]>("/templates"),
   services: () => request<Service[]>("/services"),
   service: (name: string) => request<ServiceDetail>(`/services/${name}`),

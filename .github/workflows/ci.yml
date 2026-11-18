@@ -165,7 +165,7 @@ jobs:
       - name: Every policy admits and rejects what it should
         run: kyverno test platform/kyverno/tests
       - name: Platform scripts parse
-        run: for s in scripts/*.sh; do bash -n "$s"; done
+        run: for s in scripts/*.sh launchbay; do bash -n "$s"; done
 
   terraform:
     name: Terraform modules

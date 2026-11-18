@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Boxes, Command, LayoutDashboard, Rocket, Search } from "lucide-react";
+import { Boxes, Command, LayoutDashboard, Rocket, Search, Settings2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
@@ -16,6 +16,7 @@ const nav = [
   { to: "/launch", label: "Launch", icon: Rocket, end: false },
   { to: "/services", label: "Catalog", icon: Boxes, end: false },
 ];
+const setupItem = { to: "/setup", label: "Setup", icon: Settings2, end: false };
 
 function NavItem({ to, label, icon: Icon, end }: (typeof nav)[number]) {
   return (
@@ -71,6 +72,7 @@ export function AppShell() {
           {nav.map((item) => (
             <NavItem key={item.to} {...item} />
           ))}
+          {info && !info.public_demo && <NavItem {...setupItem} />}
         </nav>
 
         <div className="mt-auto space-y-3">

@@ -12,6 +12,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLATFORM="$ROOT/platform"
 OWNER="${1:-${LAUNCHBAY_GITOPS_OWNER:-launchbay-labs}}"
+# Container image paths are lowercase, whatever the organization's display case.
+IMAGE_OWNER="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
 CLUSTER=launchbay
 ARGOCD_URL=http://argocd.localtest.me
 
@@ -74,7 +76,13 @@ helm repo add kyverno https://kyverno.github.io/kyverno >/dev/null 2>&1 || true
 helm repo update kyverno >/dev/null
 helm upgrade --install kyverno kyverno/kyverno --version "$KYVERNO_CHART_VERSION" \
   --namespace kyverno -f "$PLATFORM/kyverno/values.yaml" --wait --timeout 6m >/dev/null
-kubectl apply -f "$PLATFORM/kyverno/policies/" >/dev/null
+# The policies name launchbay-labs; point them at this organization's images and CI instead.
+for policy in "$PLATFORM"/kyverno/policies/*.yaml; do
+  # The signer's identity keeps the organization's case; image paths are lowercase.
+  sed -e "/subjectRegExp/s|launchbay-labs|$OWNER|g" -e "s|launchbay-labs|$IMAGE_OWNER|g" "$policy" \
+    | kubectl apply -f - >/dev/null
+done
+echo "Guardrails admit only ghcr.io/$IMAGE_OWNER images, signed by $IMAGE_OWNER's own CI"
 for policy in $(kubectl get validatingpolicies,imagevalidatingpolicies -o name); do
   kubectl wait --for=jsonpath='{.status.conditionStatus.ready}'=true "$policy" --timeout=120s >/dev/null
 done

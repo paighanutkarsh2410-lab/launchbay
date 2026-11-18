@@ -40,7 +40,17 @@ class Settings(BaseSettings):
     github_app_id: str | None = None
     github_private_key_path: Path | None = None
     github_owner: str | None = None
+    # Set by "Connect GitHub" (app/setup.py); links to the App's install page.
+    github_app_slug: str | None = None
     gitops_repo: str = "launchbay-gitops"
+
+    # Self-hosting: where keys and state live, the file setup writes settings to, where GitHub
+    # sends the browser back to, and the portal (built) if the API should serve it.
+    launchbay_home: Path = Path.home() / ".launchbay"
+    env_file_path: Path = API_ROOT / ".env"
+    public_api_url: str = "http://localhost:8000"
+    portal_url: str = "http://localhost:5173"
+    portal_dist: Path | None = None
 
     argocd_url: str | None = None
     argocd_token: str | None = None

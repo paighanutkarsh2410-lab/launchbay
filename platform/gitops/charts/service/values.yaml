@@ -1,0 +1,22 @@
+# Filled in per service from services/<name>.yaml by the ApplicationSet.
+name: ""
+owner: ""
+template: ""
+image: ""
+port: 8080
+host: ""
+healthPath: /healthz
+ingressClass: traefik
+replicas: 2
+# Numeric UID the container runs as. Kubernetes can only verify runAsNonRoot for numeric users.
+runAsUser: 10001
+
+# Cloud resources Launchbay provisioned with Terraform, as environment variables
+# (AWS_REGION, AWS_ENDPOINT_URL, LAUNCHBAY_BUCKET, LAUNCHBAY_QUEUE_URL, LAUNCHBAY_TABLE).
+env: {}
+# True when those resources live on the local emulator rather than real AWS.
+awsEmulator: false
+
+resources:
+  requests: { cpu: 25m, memory: 48Mi }
+  limits: { cpu: 250m, memory: 192Mi }

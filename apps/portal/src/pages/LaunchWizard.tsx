@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Burst } from "@/components/Burst";
 import { ResourcePicker, resourceLook } from "@/components/Cloud";
+import { useInfo } from "@/components/DemoBanner";
 import { GlowCard } from "@/components/GlowCard";
 import { GuardrailChecklist } from "@/components/Guardrails";
 import { MagneticButton } from "@/components/MagneticButton";
@@ -137,6 +138,7 @@ function Countdown({ onDone }: { onDone: () => void }) {
 
 export function LaunchWizard() {
   const navigate = useNavigate();
+  const { data: info } = useInfo();
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -180,10 +182,11 @@ export function LaunchWizard() {
     );
   }
 
+  const org = info?.github_owner ?? "launchbay-labs";
   const preview = [
-    { label: "Repository", value: `launchbay-labs/${name || "your-service"}` },
+    { label: "Repository", value: `${org}/${name || "your-service"}` },
     { label: "Namespace", value: name || "your-service" },
-    { label: "Image", value: `ghcr.io/launchbay-labs/${name || "your-service"}` },
+    { label: "Image", value: `ghcr.io/${org.toLowerCase()}/${name || "your-service"}` },
     { label: "URL", value: `http://${name || "your-service"}.localtest.me` },
     {
       label: "Cloud",

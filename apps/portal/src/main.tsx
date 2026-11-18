@@ -14,6 +14,7 @@ import { LaunchWizard } from "./pages/LaunchWizard";
 import { NotFound } from "./pages/NotFound";
 import { Overview } from "./pages/Overview";
 import { ServiceView } from "./pages/ServiceView";
+import { Setup } from "./pages/Setup";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 2_000, refetchOnWindowFocus: false } },
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
       { path: "launch", element: <LaunchWizard /> },
       { path: "services", element: <Catalog /> },
       { path: "services/:name", element: <ServiceView /> },
+      { path: "setup", element: <Setup /> },
       { path: "*", element: <NotFound /> },
     ],
   },

@@ -2,8 +2,9 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from sqlalchemy import update
 
 from app.api import router
@@ -17,6 +18,7 @@ from app.launcher import Launcher
 from app.models import Launch, Service, ServiceStatus, StepStatus
 from app.providers import build_provider
 from app.scorecard import Scorecards
+from app.setup import router as setup_router
 from app.templates_catalog import TemplateCatalog
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -49,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         events = EventBroker()
         catalog = TemplateCatalog(settings.templates_dir)
         app.state.settings = settings
+        app.state.setup_states = {}  # GitHub App manifest flows in progress
         app.state.db = db
         app.state.events = events
         app.state.catalog = catalog
@@ -98,7 +101,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["Content-Type"],
     )
     app.include_router(router)
+    app.include_router(setup_router)
+    if settings.portal_dist and settings.portal_dist.is_dir():
+        serve_portal(app, settings.portal_dist)
     return app
+
+
+def serve_portal(app: FastAPI, dist) -> None:
+    """Serves the built portal, so a self-hosted Launchbay is one process on one port."""
+    root = dist.resolve()
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def portal(path: str) -> FileResponse:
+        if path.startswith("api/"):
+            raise HTTPException(404)
+        file = (root / path).resolve()
+        if path and file.is_file() and file.is_relative_to(root):
+            return FileResponse(file)
+        # Client-side routes (/launch, /services/x, /setup) all load the app.
+        return FileResponse(root / "index.html")
 
 
 app = create_app()

@@ -178,6 +178,9 @@ class ScoreSummary(BaseModel):
 
 
 class InfoOut(BaseModel):
+    # "demo": every stage simulated; "github": real launches.
+    mode: Literal["demo", "github"]
+    github_owner: str | None
     public_demo: bool
     demo_ttl_hours: float | None
     project_url: str

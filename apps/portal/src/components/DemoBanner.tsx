@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { CirclePlay, Code2, FlaskConical, Loader2 } from "lucide-react";
+import { ArrowRight, CirclePlay, Code2, FlaskConical, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router";
 import { api } from "@/lib/api";
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -20,6 +21,24 @@ export function useInfo() {
 /** Above every page of the public demo: launches here are simulated. */
 export function DemoBanner() {
   const { data: info } = useInfo();
+  const { pathname } = useLocation();
+  if (info && !info.public_demo && info.mode === "demo" && pathname !== "/setup") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-amber/25 bg-amber/[0.07] px-4 py-3 text-sm"
+      >
+        <span className="flex items-center gap-2 font-medium text-amber">
+          <FlaskConical size={16} /> Demo mode
+        </span>
+        <span className="min-w-0 flex-1 text-muted">Launches are simulated until GitHub is connected.</span>
+        <Link to="/setup" className="flex items-center gap-1.5 rounded-lg bg-amber/15 px-3 py-1.5 text-xs font-medium text-fg hover:bg-amber/25">
+          Finish setup <ArrowRight size={14} />
+        </Link>
+      </motion.div>
+    );
+  }
   if (!info?.public_demo) return null;
   const video = `${info.project_url}/blob/main/docs/media/demo/launchbay-demo.mp4`;
   return (
