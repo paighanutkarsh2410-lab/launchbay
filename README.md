@@ -25,7 +25,8 @@ pipeline, and lets Argo CD put it live.
 
 <sub>A real launch: a GitHub repo, Terraform resources, a tested, scanned and signed build, and an
 Argo CD deploy. The two-minute wait for CI is fast-forwarded.
-<a href="docs/media/demo/launchbay-demo.mp4">Watch the full demo (MP4)</a>.</sub>
+<a href="docs/media/demo/launchbay-demo.mp4">Watch the full demo (MP4)</a> or
+<a href="https://launchbay-593.pages.dev">try the live demo</a>.</sub>
 
 </div>
 
@@ -140,7 +141,8 @@ emulator inside it. GitHub (repos, Actions, GHCR) is the only outside service.
 
 ## Try it
 
-A public demo runs the same portal and API with every launch simulated, so anyone can click
+**[launchbay-593.pages.dev](https://launchbay-593.pages.dev)**: a public demo runs the same portal
+and API with every launch simulated, so anyone can click
 through a launch without credentials. It is seeded from this Launchbay's real services and kept safe
 for the open internet (read-only showcase, rate limits, automatic cleanup). How it is hosted for
 free, on Cloudflare Pages and Render: [docs/public-demo.md](docs/public-demo.md).

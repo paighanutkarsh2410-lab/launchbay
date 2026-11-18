@@ -176,6 +176,7 @@ export interface Info {
   public_demo: boolean;
   demo_ttl_hours: number | null;
   project_url: string;
+  seeded: string[];
 }
 
 export const api = {

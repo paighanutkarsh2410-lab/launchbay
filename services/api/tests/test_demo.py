@@ -134,6 +134,7 @@ async def test_seeds_the_snapshot_with_timestamps_moved_to_now(demo: AsyncClient
 async def test_info_reports_the_demo(demo: AsyncClient) -> None:
     info = (await demo.get("/api/info")).json()
     assert info["public_demo"] is True and info["demo_ttl_hours"] == 3
+    assert info["seeded"] == ["broken-api", "steady-api"]
 
 
 async def test_seeded_services_are_read_only(demo: AsyncClient) -> None:

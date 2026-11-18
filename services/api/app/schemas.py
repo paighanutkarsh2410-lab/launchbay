@@ -181,6 +181,8 @@ class InfoOut(BaseModel):
     public_demo: bool
     demo_ttl_hours: float | None
     project_url: str
+    # In the public demo: the services from the snapshot (real repos), not simulated launches.
+    seeded: list[str] = []
 
 
 class AssistantInfo(BaseModel):

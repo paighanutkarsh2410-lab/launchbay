@@ -71,6 +71,7 @@ async def info(request: Request) -> InfoOut:
         public_demo=settings.public_demo,
         demo_ttl_hours=settings.demo_ttl_hours if settings.public_demo else None,
         project_url=settings.project_url,
+        seeded=sorted(request.app.state.demo.seeded) if request.app.state.demo else [],
     )
 
 

@@ -7,6 +7,7 @@ import { Link, useParams } from "react-router";
 import { Burst } from "@/components/Burst";
 import { CloudPanel } from "@/components/Cloud";
 import { DecommissionDialog } from "@/components/DecommissionDialog";
+import { useInfo } from "@/components/DemoBanner";
 import { ExplainPanel } from "@/components/Explain";
 import { MagneticButton } from "@/components/MagneticButton";
 import { ScorecardPanel } from "@/components/Scorecard";
@@ -218,6 +219,7 @@ export function ServiceView() {
   const { name } = useParams();
   const { data: service, error } = useQuery({ queryKey: ["service", name], queryFn: () => api.service(name!), enabled: !!name });
   const { data: templates = [] } = useQuery({ queryKey: ["templates"], queryFn: api.templates });
+  const { data: info } = useInfo();
   const queryClient = useQueryClient();
   const stream = useLaunchStream(name, service?.launch?.id);
   const [decommissioning, setDecommissioning] = useState(false);
@@ -269,6 +271,10 @@ export function ServiceView() {
   const failedStep = steps.find((s) => s.status === "failed");
   const url = stream.url ?? service?.url;
   const repoUrl = stream.repoUrl ?? service?.repo_url;
+  // In the public demo, service URLs only resolve on the machine running the real Launchbay, and
+  // launches made in the demo have no real repository behind them.
+  const demo = !!info?.public_demo;
+  const simulated = demo && !info?.seeded.includes(name!);
 
   return (
     <div className="space-y-6">
@@ -306,7 +312,7 @@ export function ServiceView() {
               <PowerOff size={15} /> Decommission
             </MagneticButton>
           )}
-          {repoUrl && (
+          {repoUrl && !simulated && (
             <MagneticButton variant="ghost" onClick={() => window.open(repoUrl, "_blank", "noopener,noreferrer")}>
               <GitBranch size={15} /> Repository <ExternalLink size={13} className="opacity-60" />
             </MagneticButton>
@@ -357,14 +363,24 @@ export function ServiceView() {
             </span>
             <div>
               <p className="font-display text-lg font-semibold">{name} is live</p>
-              <p className="text-sm text-muted">Signed, deployed by Argo CD and passing its health check.</p>
+              <p className="text-sm text-muted">
+                {simulated
+                  ? "Simulated launch: in the real Launchbay it's now signed, deployed by Argo CD and healthy."
+                  : "Signed, deployed by Argo CD and passing its health check."}
+              </p>
             </div>
             <div className="ml-auto flex items-center gap-1 rounded-xl border border-white/10 bg-ink-900/70 py-1 pl-4 pr-1">
               <span className="font-mono text-sm text-fg">{url}</span>
               <CopyButton text={url} />
-              <a href={url} target="_blank" rel="noreferrer" className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-fg" aria-label="Open service">
-                <ExternalLink size={15} />
-              </a>
+              {demo ? (
+                <span className="px-2 text-[11px] text-faint" title="localtest.me resolves to the machine running Launchbay">
+                  local only
+                </span>
+              ) : (
+                <a href={url} target="_blank" rel="noreferrer" className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-fg" aria-label="Open service">
+                  <ExternalLink size={15} />
+                </a>
+              )}
             </div>
           </motion.div>
         )}
