@@ -101,7 +101,7 @@ def manifest(settings: Settings, owner: str) -> dict:
         "name": f"Launchbay {owner}"[:34],
         "url": settings.project_url,
         "description": "Launches services from golden-path templates: repo, CI, GitOps.",
-        "hook_attributes": {"url": f"{api}/api/healthz", "active": False},
+        # No hook_attributes: GitHub rejects a localhost hook URL even when inactive.
         "redirect_url": f"{api}/api/setup/github/callback",
         "setup_url": f"{api}/api/setup/github/installed",
         "setup_on_update": True,

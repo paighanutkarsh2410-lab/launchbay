@@ -89,7 +89,7 @@ async def start(client: AsyncClient) -> str:
     assert manifest["default_permissions"] == PERMISSIONS
     assert manifest["redirect_url"] == "http://localhost:8000/api/setup/github/callback"
     assert manifest["setup_url"] == "http://localhost:8000/api/setup/github/installed"
-    assert manifest["hook_attributes"]["active"] is False and manifest["public"] is False
+    assert "hook_attributes" not in manifest and manifest["public"] is False
     return parse_qs(urlparse(body["action"]).query)["state"][0]
 
 
