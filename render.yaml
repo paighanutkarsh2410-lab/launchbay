@@ -16,9 +16,10 @@ services:
         - services/api/**
         - templates/**
         - platform/kyverno/policies/**
+        - render.yaml
     envVars:
       - key: LAUNCHBAY_PUBLIC_DEMO
         value: "true"
-      # The portal's address on Cloudflare Pages. Change it if your project gets another name.
+      # The portal's address on Cloudflare Pages.
       - key: LAUNCHBAY_CORS_ORIGINS
-        value: '["https://launchbay.pages.dev"]'
+        value: '["https://launchbay-593.pages.dev"]'

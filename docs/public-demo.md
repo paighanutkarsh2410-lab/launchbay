@@ -36,11 +36,11 @@ overrides the provider, cloud and explainer, whatever else is configured.
    `"public_demo": true`.
 2. **Portal on Cloudflare Pages.** In the Cloudflare dashboard, **Workers & Pages → Create →
    Pages → Connect to Git**, pick this repository, then set:
-   - Project name: `launchbay` (gives `https://launchbay.pages.dev`)
+   - Project name: `launchbay` (this one is `https://launchbay-593.pages.dev`)
    - Root directory: `apps/portal`
    - Build command: `npm ci && npm run build`, output directory: `dist`
    - Environment variables: `VITE_API_URL` = the Render URL, `NODE_VERSION` = `22`
-3. **CORS.** If the Pages address is not `https://launchbay.pages.dev`, change
+3. **CORS.** If the Pages address is not `https://launchbay-593.pages.dev`, change
    `LAUNCHBAY_CORS_ORIGINS` in `render.yaml` (or in the Render dashboard) to match.
 4. **Keep it warm.** In the GitHub repository, **Settings → Secrets and variables → Actions →
    Variables**, add `DEMO_API_URL` = the Render URL.
