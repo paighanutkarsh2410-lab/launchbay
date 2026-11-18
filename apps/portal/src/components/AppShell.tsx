@@ -7,6 +7,7 @@ import { NavLink, Outlet, useLocation } from "react-router";
 import { api } from "@/lib/api";
 import { Backdrop } from "./Backdrop";
 import { CommandPalette } from "./CommandPalette";
+import { DemoBanner, useInfo, WakingNotice } from "./DemoBanner";
 import { Logo } from "./Logo";
 import { StatusDot } from "./StatusDot";
 
@@ -45,6 +46,7 @@ export function AppShell() {
   const location = useLocation();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { data: stats } = useQuery({ queryKey: ["stats"], queryFn: api.stats, refetchInterval: 5000 });
+  const { data: info } = useInfo();
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -76,10 +78,10 @@ export function AppShell() {
             <div className="flex items-center justify-between text-xs text-muted">
               <span>Cluster</span>
               <span className="flex items-center gap-1.5 text-mint">
-                <StatusDot status="live" /> Healthy
+                <StatusDot status="live" /> {info?.public_demo ? "Simulated" : "Healthy"}
               </span>
             </div>
-            <p className="mt-2 font-mono text-[13px] text-fg">kind-launchbay</p>
+            <p className="mt-2 font-mono text-[13px] text-fg">{info?.public_demo ? "demo-cluster" : "kind-launchbay"}</p>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
                 <p className="text-faint">Services</p>
@@ -136,6 +138,8 @@ export function AppShell() {
         </header>
 
         <main className="relative flex-1 px-5 pb-20 pt-8 sm:px-8 lg:px-12">
+          <DemoBanner />
+          <WakingNotice />
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

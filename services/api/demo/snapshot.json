@@ -1,0 +1,1710 @@
+{
+ "exported_at": "2026-11-18T08:55:15.855139+00:00",
+ "services": [
+  {
+   "id": "f5edf4b73ec049e8a3071f3c7a9711a9",
+   "name": "vega-api",
+   "description": "Catalogues new stars as the survey telescopes report them.",
+   "template_id": "python-fastapi",
+   "owner": "team-platform",
+   "status": "live",
+   "repo_url": "https://github.com/launchbay-labs/vega-api",
+   "url": "http://vega-api.localtest.me",
+   "resources": [
+    "bucket",
+    "queue"
+   ],
+   "created_at": "2026-11-18T07:53:01.976893Z",
+   "launch": {
+    "id": "af66c81aa9f74acf9f9031b1a74828f0",
+    "status": "succeeded",
+    "started_at": "2026-11-18T07:53:01.978906Z",
+    "finished_at": "2026-11-18T07:55:45.209233Z",
+    "error": null,
+    "steps": [
+     {
+      "key": "validate",
+      "title": "Validate request",
+      "position": 0,
+      "status": "succeeded",
+      "detail": "Name, template and owner are valid",
+      "logs": [
+       "name: vega-api",
+       "template: Python API (FastAPI \u00b7 Python 3.12)",
+       "owner: team-platform"
+      ],
+      "started_at": "2026-11-18T07:53:02.004884Z",
+      "finished_at": "2026-11-18T07:53:02.055343Z"
+     },
+     {
+      "key": "repository",
+      "title": "Create repository",
+      "position": 1,
+      "status": "succeeded",
+      "detail": "launchbay-labs/vega-api",
+      "logs": [
+       "POST /orgs/launchbay-labs/repos name=vega-api",
+       "Rendering template 'python-fastapi' (13 files)",
+       "  + .dockerignore",
+       "  + .github/dependabot.yml",
+       "  + .github/workflows/ci.yml",
+       "  + .gitignore",
+       "  + app/__init__.py",
+       "  + app/cloud.py",
+       "  + app/main.py",
+       "  + Dockerfile",
+       "  + pyproject.toml",
+       "  + README.md",
+       "  + requirements-dev.txt",
+       "  + requirements.txt",
+       "  + tests/test_main.py",
+       "Created commit 8cd9cef on main"
+      ],
+      "started_at": "2026-11-18T07:53:02.069348Z",
+      "finished_at": "2026-11-18T07:53:14.334229Z"
+     },
+     {
+      "key": "cloud",
+      "title": "Provision cloud resources",
+      "position": 2,
+      "status": "succeeded",
+      "detail": "3 resources ready",
+      "logs": [
+       "Target: Local AWS emulator (Moto)",
+       "Requested: bucket, queue",
+       "terraform init (state in ~/.launchbay/cloud/vega-api)",
+       "terraform apply -> http://aws.localtest.me",
+       "Plan: 10 to add, 0 to change, 0 to destroy.",
+       "aws_kms_key: Creating...",
+       "bucket/aws_s3_bucket: Creating...",
+       "bucket/aws_s3_bucket: Creation complete after 0s",
+       "bucket/aws_s3_bucket_versioning: Creating...",
+       "bucket/aws_s3_bucket_public_access_block: Creating...",
+       "bucket/aws_s3_bucket_ownership_controls: Creating...",
+       "bucket/aws_s3_bucket_public_access_block: Creation complete after 1s",
+       "bucket/aws_s3_bucket_ownership_controls: Creation complete after 1s",
+       "bucket/aws_s3_bucket_versioning: Creation complete after 2s",
+       "aws_kms_key: Creation complete after 8s",
+       "aws_kms_alias: Creating...",
+       "bucket/aws_s3_bucket_server_side_encryption_configuration: Creating...",
+       "queue/aws_sqs_queue: Creating...",
+       "queue/aws_sqs_queue: Creating...",
+       "aws_kms_alias: Creation complete after 1s",
+       "bucket/aws_s3_bucket_server_side_encryption_configuration: Creation complete after 1s",
+       "queue/aws_sqs_queue: Creation complete after 26s",
+       "queue/aws_sqs_queue: Creation complete after 26s",
+       "queue/aws_sqs_queue_redrive_policy: Creating...",
+       "queue/aws_sqs_queue_redrive_policy: Creation complete after 25s",
+       "Apply complete! Resources: 10 added, 0 changed, 0 destroyed.",
+       "  AWS_ENDPOINT_URL=http://moto.launchbay-cloud.svc.cluster.local:5000",
+       "  AWS_REGION=us-east-1",
+       "  LAUNCHBAY_BUCKET=vega-api-123456789012",
+       "  LAUNCHBAY_QUEUE_URL=http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/vega-api"
+      ],
+      "started_at": "2026-11-18T07:53:14.348555Z",
+      "finished_at": "2026-11-18T07:54:31.828837Z"
+     },
+     {
+      "key": "pipeline",
+      "title": "Build, scan & sign",
+      "position": 3,
+      "status": "succeeded",
+      "detail": "ghcr.io/launchbay-labs/vega-api:8cd9cef3b34edb3e116a8a3eb6efcdf7993fe749",
+      "logs": [
+       "Workflow 'docker in /. - Update #1713835721' completed",
+       "Run: https://github.com/launchbay-labs/vega-api/actions/runs/44262392838",
+       "Image: ghcr.io/launchbay-labs/vega-api:8cd9cef3b34edb3e116a8a3eb6efcdf7993fe749"
+      ],
+      "started_at": "2026-11-18T07:54:31.840440Z",
+      "finished_at": "2026-11-18T07:54:32.512257Z"
+     },
+     {
+      "key": "gitops",
+      "title": "Register with GitOps",
+      "position": 4,
+      "status": "succeeded",
+      "detail": "services/vega-api.yaml",
+      "logs": [
+       "  name: vega-api",
+       "  owner: team-platform",
+       "  template: python-fastapi",
+       "  image: ghcr.io/launchbay-labs/vega-api:8cd9cef3b34edb3e116a8a3eb6efcdf7993fe749",
+       "  port: 8000",
+       "  host: vega-api.localtest.me",
+       "  runAsUser: 10001",
+       "  env:",
+       "    AWS_ENDPOINT_URL: http://moto.launchbay-cloud.svc.cluster.local:5000",
+       "    AWS_REGION: us-east-1",
+       "    LAUNCHBAY_BUCKET: vega-api-123456789012",
+       "    LAUNCHBAY_QUEUE_URL: http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/vega-api",
+       "  awsEmulator: true",
+       "Committed services/vega-api.yaml to launchbay-gitops"
+      ],
+      "started_at": "2026-11-18T07:54:32.514922Z",
+      "finished_at": "2026-11-18T07:54:34.148483Z"
+     },
+     {
+      "key": "deploy",
+      "title": "Deploy with Argo CD",
+      "position": 5,
+      "status": "succeeded",
+      "detail": "Synced \u00b7 Healthy",
+      "logs": [
+       "Waiting for the ApplicationSet to generate the Application",
+       "Sync: OutOfSync \u00b7 Health: Healthy",
+       "Sync: Synced \u00b7 Health: Progressing",
+       "Sync: Synced \u00b7 Health: Healthy"
+      ],
+      "started_at": "2026-11-18T07:54:34.165713Z",
+      "finished_at": "2026-11-18T07:55:44.662639Z"
+     },
+     {
+      "key": "live",
+      "title": "Go live",
+      "position": 6,
+      "status": "succeeded",
+      "detail": "http://vega-api.localtest.me",
+      "logs": [
+       "GET http://vega-api.localtest.me/healthz",
+       "200 OK in 176ms"
+      ],
+      "started_at": "2026-11-18T07:55:44.678479Z",
+      "finished_at": "2026-11-18T07:55:45.196943Z"
+     }
+    ],
+    "explanation": null
+   },
+   "cloud": {
+    "env": {
+     "AWS_ENDPOINT_URL": "http://moto.launchbay-cloud.svc.cluster.local:5000",
+     "AWS_REGION": "us-east-1",
+     "LAUNCHBAY_BUCKET": "vega-api-123456789012",
+     "LAUNCHBAY_QUEUE_URL": "http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/vega-api"
+    },
+    "resources": [
+     {
+      "kind": "key",
+      "name": "alias/launchbay/vega-api",
+      "arn": "arn:aws:kms:us-east-1:123456789012:key/99c1d4df-0edf-4469-9bd5-ab229e874b31"
+     },
+     {
+      "kind": "bucket",
+      "name": "vega-api-123456789012",
+      "arn": "arn:aws:s3:::vega-api-123456789012"
+     },
+     {
+      "kind": "queue",
+      "name": "vega-api",
+      "arn": "arn:aws:sqs:us-east-1:123456789012:vega-api"
+     }
+    ]
+   }
+  },
+  {
+   "id": "d2f766a585b44d279002b68b93a5a9e7",
+   "name": "nova-api",
+   "description": "Catalogues new stars as the survey telescopes report them.",
+   "template_id": "python-fastapi",
+   "owner": "team-platform",
+   "status": "live",
+   "repo_url": "https://github.com/launchbay-labs/nova-api",
+   "url": "http://nova-api.localtest.me",
+   "resources": [
+    "bucket",
+    "queue"
+   ],
+   "created_at": "2026-11-18T07:47:07.142237Z",
+   "launch": {
+    "id": "e7afe8eac0214d269ca52e03a988576c",
+    "status": "succeeded",
+    "started_at": "2026-11-18T07:47:07.142237Z",
+    "finished_at": "2026-11-18T07:49:40.674389Z",
+    "error": null,
+    "steps": [
+     {
+      "key": "validate",
+      "title": "Validate request",
+      "position": 0,
+      "status": "succeeded",
+      "detail": "Name, template and owner are valid",
+      "logs": [
+       "name: nova-api",
+       "template: Python API (FastAPI \u00b7 Python 3.12)",
+       "owner: team-platform"
+      ],
+      "started_at": "2026-11-18T07:47:07.175461Z",
+      "finished_at": "2026-11-18T07:47:07.234635Z"
+     },
+     {
+      "key": "repository",
+      "title": "Create repository",
+      "position": 1,
+      "status": "succeeded",
+      "detail": "launchbay-labs/nova-api",
+      "logs": [
+       "POST /orgs/launchbay-labs/repos name=nova-api",
+       "Rendering template 'python-fastapi' (13 files)",
+       "  + .dockerignore",
+       "  + .github/dependabot.yml",
+       "  + .github/workflows/ci.yml",
+       "  + .gitignore",
+       "  + app/__init__.py",
+       "  + app/cloud.py",
+       "  + app/main.py",
+       "  + Dockerfile",
+       "  + pyproject.toml",
+       "  + README.md",
+       "  + requirements-dev.txt",
+       "  + requirements.txt",
+       "  + tests/test_main.py",
+       "Created commit e2420f4 on main"
+      ],
+      "started_at": "2026-11-18T07:47:07.237690Z",
+      "finished_at": "2026-11-18T07:47:19.369289Z"
+     },
+     {
+      "key": "cloud",
+      "title": "Provision cloud resources",
+      "position": 2,
+      "status": "succeeded",
+      "detail": "3 resources ready",
+      "logs": [
+       "Target: Local AWS emulator (Moto)",
+       "Requested: bucket, queue",
+       "terraform init (state in ~/.launchbay/cloud/nova-api)",
+       "terraform apply -> http://aws.localtest.me",
+       "Plan: 10 to add, 0 to change, 0 to destroy.",
+       "aws_kms_key: Creating...",
+       "bucket/aws_s3_bucket: Creating...",
+       "bucket/aws_s3_bucket: Creation complete after 0s",
+       "bucket/aws_s3_bucket_versioning: Creating...",
+       "bucket/aws_s3_bucket_public_access_block: Creating...",
+       "bucket/aws_s3_bucket_ownership_controls: Creating...",
+       "bucket/aws_s3_bucket_ownership_controls: Creation complete after 0s",
+       "bucket/aws_s3_bucket_public_access_block: Creation complete after 0s",
+       "bucket/aws_s3_bucket_versioning: Creation complete after 1s",
+       "aws_kms_key: Creation complete after 8s",
+       "aws_kms_alias: Creating...",
+       "bucket/aws_s3_bucket_server_side_encryption_configuration: Creating...",
+       "queue/aws_sqs_queue: Creating...",
+       "queue/aws_sqs_queue: Creating...",
+       "aws_kms_alias: Creation complete after 0s",
+       "bucket/aws_s3_bucket_server_side_encryption_configuration: Creation complete after 0s",
+       "queue/aws_sqs_queue: Creation complete after 25s",
+       "queue/aws_sqs_queue: Creation complete after 25s",
+       "queue/aws_sqs_queue_redrive_policy: Creating...",
+       "queue/aws_sqs_queue_redrive_policy: Creation complete after 25s",
+       "Apply complete! Resources: 10 added, 0 changed, 0 destroyed.",
+       "  AWS_ENDPOINT_URL=http://moto.launchbay-cloud.svc.cluster.local:5000",
+       "  AWS_REGION=us-east-1",
+       "  LAUNCHBAY_BUCKET=nova-api-123456789012",
+       "  LAUNCHBAY_QUEUE_URL=http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/nova-api"
+      ],
+      "started_at": "2026-11-18T07:47:19.381695Z",
+      "finished_at": "2026-11-18T07:48:37.272917Z"
+     },
+     {
+      "key": "pipeline",
+      "title": "Build, scan & sign",
+      "position": 3,
+      "status": "succeeded",
+      "detail": "ghcr.io/launchbay-labs/nova-api:e2420f4295ff35d8aa324407fc285ece13180cd8",
+      "logs": [
+       "Workflow 'docker in /. - Update #1713829044' completed",
+       "Run: https://github.com/launchbay-labs/nova-api/actions/runs/44261636106",
+       "Image: ghcr.io/launchbay-labs/nova-api:e2420f4295ff35d8aa324407fc285ece13180cd8"
+      ],
+      "started_at": "2026-11-18T07:48:37.288096Z",
+      "finished_at": "2026-11-18T07:48:37.995008Z"
+     },
+     {
+      "key": "gitops",
+      "title": "Register with GitOps",
+      "position": 4,
+      "status": "succeeded",
+      "detail": "services/nova-api.yaml",
+      "logs": [
+       "  name: nova-api",
+       "  owner: team-platform",
+       "  template: python-fastapi",
+       "  image: ghcr.io/launchbay-labs/nova-api:e2420f4295ff35d8aa324407fc285ece13180cd8",
+       "  port: 8000",
+       "  host: nova-api.localtest.me",
+       "  runAsUser: 10001",
+       "  env:",
+       "    AWS_ENDPOINT_URL: http://moto.launchbay-cloud.svc.cluster.local:5000",
+       "    AWS_REGION: us-east-1",
+       "    LAUNCHBAY_BUCKET: nova-api-123456789012",
+       "    LAUNCHBAY_QUEUE_URL: http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/nova-api",
+       "  awsEmulator: true",
+       "Committed services/nova-api.yaml to launchbay-gitops"
+      ],
+      "started_at": "2026-11-18T07:48:38.004068Z",
+      "finished_at": "2026-11-18T07:48:39.717262Z"
+     },
+     {
+      "key": "deploy",
+      "title": "Deploy with Argo CD",
+      "position": 5,
+      "status": "succeeded",
+      "detail": "Synced \u00b7 Healthy",
+      "logs": [
+       "Waiting for the ApplicationSet to generate the Application",
+       "Sync: OutOfSync \u00b7 Health: Healthy",
+       "Sync: Synced \u00b7 Health: Progressing",
+       "Sync: Synced \u00b7 Health: Healthy"
+      ],
+      "started_at": "2026-11-18T07:48:39.725307Z",
+      "finished_at": "2026-11-18T07:49:40.122578Z"
+     },
+     {
+      "key": "live",
+      "title": "Go live",
+      "position": 6,
+      "status": "succeeded",
+      "detail": "http://nova-api.localtest.me",
+      "logs": [
+       "GET http://nova-api.localtest.me/healthz",
+       "200 OK in 179ms"
+      ],
+      "started_at": "2026-11-18T07:49:40.130704Z",
+      "finished_at": "2026-11-18T07:49:40.650505Z"
+     }
+    ],
+    "explanation": null
+   },
+   "cloud": {
+    "env": {
+     "AWS_ENDPOINT_URL": "http://moto.launchbay-cloud.svc.cluster.local:5000",
+     "AWS_REGION": "us-east-1",
+     "LAUNCHBAY_BUCKET": "nova-api-123456789012",
+     "LAUNCHBAY_QUEUE_URL": "http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/nova-api"
+    },
+    "resources": [
+     {
+      "kind": "key",
+      "name": "alias/launchbay/nova-api",
+      "arn": "arn:aws:kms:us-east-1:123456789012:key/89060dc0-3676-4c9a-9c0c-aabac8a74b9b"
+     },
+     {
+      "kind": "bucket",
+      "name": "nova-api-123456789012",
+      "arn": "arn:aws:s3:::nova-api-123456789012"
+     },
+     {
+      "kind": "queue",
+      "name": "nova-api",
+      "arn": "arn:aws:sqs:us-east-1:123456789012:nova-api"
+     }
+    ]
+   }
+  },
+  {
+   "id": "a46ee6683d4d40c58cb5d7e87de223ee",
+   "name": "flare-api",
+   "description": "Sends payment alerts to merchants",
+   "template_id": "python-fastapi",
+   "owner": "team-payments",
+   "status": "failed",
+   "repo_url": "https://github.com/launchbay-labs/flare-api",
+   "url": null,
+   "resources": [],
+   "created_at": "2026-11-18T05:15:51.589508Z",
+   "launch": {
+    "id": "34eead647621412dbe68f2f665b0abee",
+    "status": "failed",
+    "started_at": "2026-11-18T05:16:44.241844Z",
+    "finished_at": "2026-11-18T05:16:45.740713Z",
+    "error": "CI finished with 'failure'. See https://github.com/launchbay-labs/flare-api/actions/runs/44243078534. Push a fix to main, then retry.",
+    "steps": [
+     {
+      "key": "validate",
+      "title": "Validate request",
+      "position": 0,
+      "status": "succeeded",
+      "detail": "Name, template and owner are valid",
+      "logs": [
+       "name: flare-api",
+       "template: Python API (FastAPI \u00b7 Python 3.12)",
+       "owner: team-payments",
+       "\u21ba Kept from the previous launch"
+      ],
+      "started_at": "2026-11-18T05:15:51.616037Z",
+      "finished_at": "2026-11-18T05:15:51.651698Z"
+     },
+     {
+      "key": "repository",
+      "title": "Create repository",
+      "position": 1,
+      "status": "succeeded",
+      "detail": "launchbay-labs/flare-api",
+      "logs": [
+       "POST /orgs/launchbay-labs/repos name=flare-api",
+       "Rendering template 'python-fastapi' (13 files)",
+       "  + .dockerignore",
+       "  + .github/dependabot.yml",
+       "  + .github/workflows/ci.yml",
+       "  + .gitignore",
+       "  + app/__init__.py",
+       "  + app/cloud.py",
+       "  + app/main.py",
+       "  + Dockerfile",
+       "  + pyproject.toml",
+       "  + README.md",
+       "  + requirements-dev.txt",
+       "  + requirements.txt",
+       "  + tests/test_main.py",
+       "Created commit 720f533 on main",
+       "\u21ba Kept from the previous launch"
+      ],
+      "started_at": "2026-11-18T05:15:51.666332Z",
+      "finished_at": "2026-11-18T05:16:03.620156Z"
+     },
+     {
+      "key": "cloud",
+      "title": "Provision cloud resources",
+      "position": 2,
+      "status": "succeeded",
+      "detail": "None requested",
+      "logs": [
+       "No cloud resources requested",
+       "\u21ba Kept from the previous launch"
+      ],
+      "started_at": "2026-11-18T05:16:03.633160Z",
+      "finished_at": "2026-11-18T05:16:03.656506Z"
+     },
+     {
+      "key": "pipeline",
+      "title": "Build, scan & sign",
+      "position": 3,
+      "status": "failed",
+      "detail": null,
+      "logs": [
+       "Workflow 'ci' completed",
+       "Run: https://github.com/launchbay-labs/flare-api/actions/runs/44243078534",
+       "\u2717 CI finished with 'failure'. See https://github.com/launchbay-labs/flare-api/actions/runs/44243078534. Push a fix to main, then retry."
+      ],
+      "started_at": "2026-11-18T05:16:45.288115Z",
+      "finished_at": "2026-11-18T05:16:45.732205Z"
+     },
+     {
+      "key": "gitops",
+      "title": "Register with GitOps",
+      "position": 4,
+      "status": "pending",
+      "detail": null,
+      "logs": [],
+      "started_at": null,
+      "finished_at": null
+     },
+     {
+      "key": "deploy",
+      "title": "Deploy with Argo CD",
+      "position": 5,
+      "status": "pending",
+      "detail": null,
+      "logs": [],
+      "started_at": null,
+      "finished_at": null
+     },
+     {
+      "key": "live",
+      "title": "Go live",
+      "position": 6,
+      "status": "pending",
+      "detail": null,
+      "logs": [],
+      "started_at": null,
+      "finished_at": null
+     }
+    ],
+    "explanation": {
+     "summary": "The pipeline CI workflow failed during unit testing because tests/test_main.py expected a 'service' key that was missing from the root endpoint response.",
+     "cause": "Commit 7fe19f86c308 renamed the root endpoint response field to 'name', but the test suite in tests/test_main.py was not updated. When test_root_names_the_service accessed client.get(\"/\").json()[\"service\"], it raised a KeyError.",
+     "fix": [
+      "Update tests/test_main.py to assert against 'name' instead of 'service' (or revert the field name change in the root endpoint).",
+      "Run pytest locally to ensure all tests pass.",
+      "Commit and push the changes to main.",
+      "Retry the launch."
+     ],
+     "evidence": [
+      "Commit: 7fe19f86c308 Rename the root response's service field to name",
+      ">       assert client.get(\"/\").json()[\"service\"] == \"flare-api\"",
+      "E       KeyError: 'service'",
+      "FAILED tests/test_main.py::test_root_names_the_service - KeyError: 'service'"
+     ],
+     "confidence": "high",
+     "source": "gemini",
+     "model": "gemini-3.8-flash",
+     "stage": "pipeline",
+     "note": null
+    }
+   },
+   "cloud": null
+  },
+  {
+   "id": "29a03cc066b340a09daa83011177c9ee",
+   "name": "quasar-api",
+   "description": "",
+   "template_id": "python-fastapi",
+   "owner": "team-platform",
+   "status": "live",
+   "repo_url": "https://github.com/launchbay-labs/quasar-api",
+   "url": "http://quasar-api.localtest.me",
+   "resources": [
+    "bucket",
+    "queue",
+    "table"
+   ],
+   "created_at": "2026-11-18T04:48:13.167218Z",
+   "launch": {
+    "id": "a8334d231b624bf998a7892cf924845e",
+    "status": "succeeded",
+    "started_at": "2026-11-18T04:48:13.170065Z",
+    "finished_at": "2026-11-18T04:50:52.306588Z",
+    "error": null,
+    "steps": [
+     {
+      "key": "validate",
+      "title": "Validate request",
+      "position": 0,
+      "status": "succeeded",
+      "detail": "Name, template and owner are valid",
+      "logs": [
+       "name: quasar-api",
+       "template: Python API (FastAPI \u00b7 Python 3.12)",
+       "owner: team-platform"
+      ],
+      "started_at": "2026-11-18T04:48:13.192601Z",
+      "finished_at": "2026-11-18T04:48:13.236058Z"
+     },
+     {
+      "key": "repository",
+      "title": "Create repository",
+      "position": 1,
+      "status": "succeeded",
+      "detail": "launchbay-labs/quasar-api",
+      "logs": [
+       "POST /orgs/launchbay-labs/repos name=quasar-api",
+       "Rendering template 'python-fastapi' (12 files)",
+       "  + .dockerignore",
+       "  + .github/workflows/ci.yml",
+       "  + .gitignore",
+       "  + app/__init__.py",
+       "  + app/cloud.py",
+       "  + app/main.py",
+       "  + Dockerfile",
+       "  + pyproject.toml",
+       "  + README.md",
+       "  + requirements-dev.txt",
+       "  + requirements.txt",
+       "  + tests/test_main.py",
+       "Created commit d71d426 on main"
+      ],
+      "started_at": "2026-11-18T04:48:13.244642Z",
+      "finished_at": "2026-11-18T04:48:25.230121Z"
+     },
+     {
+      "key": "cloud",
+      "title": "Provision cloud resources",
+      "position": 2,
+      "status": "succeeded",
+      "detail": "4 resources ready",
+      "logs": [
+       "Target: Local AWS emulator (Moto)",
+       "Requested: bucket, queue, table",
+       "terraform init (state in ~/.launchbay/cloud/quasar-api)",
+       "terraform apply -> http://aws.localtest.me",
+       "Plan: 11 to add, 0 to change, 0 to destroy.",
+       "aws_kms_key.service[0]: Creating...",
+       "module.bucket[0].aws_s3_bucket.this: Creating...",
+       "module.bucket[0].aws_s3_bucket.this: Creation complete after 0s [id=quasar-api-123456789012]",
+       "module.bucket[0].aws_s3_bucket_public_access_block.this: Creating...",
+       "module.bucket[0].aws_s3_bucket_ownership_controls.this: Creating...",
+       "module.bucket[0].aws_s3_bucket_versioning.this: Creating...",
+       "module.bucket[0].aws_s3_bucket_public_access_block.this: Creation complete after 0s [id=quasar-api-123456789012]",
+       "module.bucket[0].aws_s3_bucket_ownership_controls.this: Creation complete after 0s [id=quasar-api-123456789012]",
+       "module.bucket[0].aws_s3_bucket_versioning.this: Creation complete after 1s [id=quasar-api-123456789012]",
+       "aws_kms_key.service[0]: Creation complete after 8s [id=59fc5fe6-4dc6-474d-af8e-c6e75a2745a4]",
+       "aws_kms_alias.service[0]: Creating...",
+       "module.bucket[0].aws_s3_bucket_server_side_encryption_configuration.this: Creating...",
+       "module.queue[0].aws_sqs_queue.dead_letter: Creating...",
+       "module.queue[0].aws_sqs_queue.this: Creating...",
+       "module.table[0].aws_dynamodb_table.this: Creating...",
+       "aws_kms_alias.service[0]: Creation complete after 0s [id=alias/launchbay/quasar-api]",
+       "module.bucket[0].aws_s3_bucket_server_side_encryption_configuration.this: Creation complete after 0s [id=quasar-api-123456789012]",
+       "module.table[0].aws_dynamodb_table.this: Creation complete after 6s [id=quasar-api]",
+       "module.queue[0].aws_sqs_queue.this: Creation complete after 25s [id=http://aws.localtest.me/123456789012/quasar-api]",
+       "module.queue[0].aws_sqs_queue.dead_letter: Creation complete after 25s [id=http://aws.localtest.me/123456789012/quasar-api-dlq]",
+       "module.queue[0].aws_sqs_queue_redrive_policy.this: Creating...",
+       "module.queue[0].aws_sqs_queue_redrive_policy.this: Creation complete after 25s [id=http://aws.localtest.me/123456789012/quasar-api]",
+       "Apply complete! Resources: 11 added, 0 changed, 0 destroyed.",
+       "  AWS_ENDPOINT_URL=http://moto.launchbay-cloud.svc.cluster.local:5000",
+       "  AWS_REGION=us-east-1",
+       "  LAUNCHBAY_BUCKET=quasar-api-123456789012",
+       "  LAUNCHBAY_QUEUE_URL=http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/quasar-api",
+       "  LAUNCHBAY_TABLE=quasar-api"
+      ],
+      "started_at": "2026-11-18T04:48:25.240621Z",
+      "finished_at": "2026-11-18T04:49:54.270477Z"
+     },
+     {
+      "key": "pipeline",
+      "title": "Build, scan & sign",
+      "position": 3,
+      "status": "succeeded",
+      "detail": "ghcr.io/launchbay-labs/quasar-api:d71d4266b19b7cf799ce4ad7d36c6d3fd42cf08e",
+      "logs": [
+       "Workflow 'ci' completed",
+       "Run: https://github.com/launchbay-labs/quasar-api/actions/runs/44239865410",
+       "Image: ghcr.io/launchbay-labs/quasar-api:d71d4266b19b7cf799ce4ad7d36c6d3fd42cf08e"
+      ],
+      "started_at": "2026-11-18T04:49:54.279740Z",
+      "finished_at": "2026-11-18T04:49:54.869947Z"
+     },
+     {
+      "key": "gitops",
+      "title": "Register with GitOps",
+      "position": 4,
+      "status": "succeeded",
+      "detail": "services/quasar-api.yaml",
+      "logs": [
+       "  name: quasar-api",
+       "  owner: team-platform",
+       "  template: python-fastapi",
+       "  image: ghcr.io/launchbay-labs/quasar-api:d71d4266b19b7cf799ce4ad7d36c6d3fd42cf08e",
+       "  port: 8000",
+       "  host: quasar-api.localtest.me",
+       "  runAsUser: 10001",
+       "  env:",
+       "    AWS_ENDPOINT_URL: http://moto.launchbay-cloud.svc.cluster.local:5000",
+       "    AWS_REGION: us-east-1",
+       "    LAUNCHBAY_BUCKET: quasar-api-123456789012",
+       "    LAUNCHBAY_QUEUE_URL: http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/quasar-api",
+       "    LAUNCHBAY_TABLE: quasar-api",
+       "  awsEmulator: true",
+       "Committed services/quasar-api.yaml to launchbay-gitops"
+      ],
+      "started_at": "2026-11-18T04:49:54.880832Z",
+      "finished_at": "2026-11-18T04:49:56.538635Z"
+     },
+     {
+      "key": "deploy",
+      "title": "Deploy with Argo CD",
+      "position": 5,
+      "status": "succeeded",
+      "detail": "Synced \u00b7 Healthy",
+      "logs": [
+       "Waiting for the ApplicationSet to generate the Application",
+       "Sync: OutOfSync \u00b7 Health: Healthy",
+       "Sync: Synced \u00b7 Health: Progressing",
+       "Sync: Synced \u00b7 Health: Healthy"
+      ],
+      "started_at": "2026-11-18T04:49:56.551401Z",
+      "finished_at": "2026-11-18T04:50:51.842689Z"
+     },
+     {
+      "key": "live",
+      "title": "Go live",
+      "position": 6,
+      "status": "succeeded",
+      "detail": "http://quasar-api.localtest.me",
+      "logs": [
+       "GET http://quasar-api.localtest.me/healthz",
+       "200 OK in 165ms"
+      ],
+      "started_at": "2026-11-18T04:50:51.859277Z",
+      "finished_at": "2026-11-18T04:50:52.300910Z"
+     }
+    ],
+    "explanation": null
+   },
+   "cloud": {
+    "env": {
+     "AWS_ENDPOINT_URL": "http://moto.launchbay-cloud.svc.cluster.local:5000",
+     "AWS_REGION": "us-east-1",
+     "LAUNCHBAY_BUCKET": "quasar-api-123456789012",
+     "LAUNCHBAY_QUEUE_URL": "http://moto.launchbay-cloud.svc.cluster.local:5000/123456789012/quasar-api",
+     "LAUNCHBAY_TABLE": "quasar-api"
+    },
+    "resources": [
+     {
+      "kind": "key",
+      "name": "alias/launchbay/quasar-api",
+      "arn": "arn:aws:kms:us-east-1:123456789012:key/4994417e-d8bf-4bd6-b251-16f8c4c162f9"
+     },
+     {
+      "kind": "bucket",
+      "name": "quasar-api-123456789012",
+      "arn": "arn:aws:s3:::quasar-api-123456789012"
+     },
+     {
+      "kind": "queue",
+      "name": "quasar-api",
+      "arn": "arn:aws:sqs:us-east-1:123456789012:quasar-api"
+     },
+     {
+      "kind": "table",
+      "name": "quasar-api",
+      "arn": "arn:aws:dynamodb:us-east-1:123456789012:table/quasar-api"
+     }
+    ]
+   }
+  },
+  {
+   "id": "37cd00b359dd42429191e359829bb36b",
+   "name": "comet-site",
+   "description": "",
+   "template_id": "static-site",
+   "owner": "team-platform",
+   "status": "live",
+   "repo_url": "https://github.com/launchbay-labs/comet-site",
+   "url": "http://comet-site.localtest.me",
+   "resources": [],
+   "created_at": "2026-11-17T20:00:44.352376Z",
+   "launch": {
+    "id": "d86d5354f1134ecda6a8f00b8fc30020",
+    "status": "succeeded",
+    "started_at": "2026-11-17T20:00:44.354584Z",
+    "finished_at": "2026-11-17T20:03:16.782021Z",
+    "error": null,
+    "steps": [
+     {
+      "key": "validate",
+      "title": "Validate request",
+      "position": 0,
+      "status": "succeeded",
+      "detail": "Name, template and owner are valid",
+      "logs": [
+       "name: comet-site",
+       "template: Static Site (nginx \u00b7 unprivileged)",
+       "owner: team-platform"
+      ],
+      "started_at": "2026-11-17T20:00:44.386299Z",
+      "finished_at": "2026-11-17T20:00:44.462746Z"
+     },
+     {
+      "key": "repository",
+      "title": "Create repository",
+      "position": 1,
+      "status": "succeeded",
+      "detail": "launchbay-labs/comet-site",
+      "logs": [
+       "POST /orgs/launchbay-labs/repos name=comet-site",
+       "Rendering template 'static-site' (6 files)",
+       "  + .github/workflows/ci.yml",
+       "  + Dockerfile",
+       "  + nginx.conf",
+       "  + README.md",
+       "  + site/healthz",
+       "  + site/index.html",
+       "Created commit 1651db3 on main"
+      ],
+      "started_at": "2026-11-17T20:00:44.474838Z",
+      "finished_at": "2026-11-17T20:00:53.573356Z"
+     },
+     {
+      "key": "pipeline",
+      "title": "Build, scan & sign",
+      "position": 2,
+      "status": "succeeded",
+      "detail": "ghcr.io/launchbay-labs/comet-site:1651db3075e1308edb364b6a118ba1e451353764",
+      "logs": [
+       "Workflow 'ci' queued",
+       "Workflow 'ci' in progress",
+       "Workflow 'ci' completed",
+       "Run: https://github.com/launchbay-labs/comet-site/actions/runs/44164763299",
+       "Image: ghcr.io/launchbay-labs/comet-site:1651db3075e1308edb364b6a118ba1e451353764"
+      ],
+      "started_at": "2026-11-17T20:00:53.586785Z",
+      "finished_at": "2026-11-17T20:02:49.949840Z"
+     },
+     {
+      "key": "gitops",
+      "title": "Register with GitOps",
+      "position": 3,
+      "status": "succeeded",
+      "detail": "services/comet-site.yaml",
+      "logs": [
+       "  name: comet-site",
+       "  owner: team-platform",
+       "  template: static-site",
+       "  image: ghcr.io/launchbay-labs/comet-site:1651db3075e1308edb364b6a118ba1e451353764",
+       "  port: 8080",
+       "  host: comet-site.localtest.me",
+       "  runAsUser: 101",
+       "Committed services/comet-site.yaml to launchbay-gitops"
+      ],
+      "started_at": "2026-11-17T20:02:49.954286Z",
+      "finished_at": "2026-11-17T20:02:51.180021Z"
+     },
+     {
+      "key": "deploy",
+      "title": "Deploy with Argo CD",
+      "position": 4,
+      "status": "succeeded",
+      "detail": "Synced \u00b7 Healthy",
+      "logs": [
+       "Waiting for the ApplicationSet to generate the Application",
+       "Sync: Synced \u00b7 Health: Progressing",
+       "Sync: Synced \u00b7 Health: Healthy"
+      ],
+      "started_at": "2026-11-17T20:02:51.189771Z",
+      "finished_at": "2026-11-17T20:03:16.332824Z"
+     },
+     {
+      "key": "live",
+      "title": "Go live",
+      "position": 5,
+      "status": "succeeded",
+      "detail": "http://comet-site.localtest.me",
+      "logs": [
+       "GET http://comet-site.localtest.me/healthz",
+       "200 OK in 173ms"
+      ],
+      "started_at": "2026-11-17T20:03:16.337222Z",
+      "finished_at": "2026-11-17T20:03:16.773093Z"
+     }
+    ],
+    "explanation": null
+   },
+   "cloud": null
+  },
+  {
+   "id": "47c01ba4ed46423a9c29c074d76539fc",
+   "name": "pulsar-api",
+   "description": "First service launched end to end with Launchbay",
+   "template_id": "python-fastapi",
+   "owner": "team-platform",
+   "status": "live",
+   "repo_url": "https://github.com/launchbay-labs/pulsar-api",
+   "url": "http://pulsar-api.localtest.me",
+   "resources": [],
+   "created_at": "2026-11-17T19:37:33.698914Z",
+   "launch": {
+    "id": "f75b835eef3f439e96185ee3f1dc8c08",
+    "status": "succeeded",
+    "started_at": "2026-11-17T20:09:15.538077Z",
+    "finished_at": "2026-11-17T20:09:19.326236Z",
+    "error": null,
+    "steps": [
+     {
+      "key": "validate",
+      "title": "Validate request",
+      "position": 0,
+      "status": "succeeded",
+      "detail": "Name, template and owner are valid",
+      "logs": [
+       "name: pulsar-api",
+       "template: Python API (FastAPI \u00b7 Python 3.12)",
+       "owner: team-platform",
+       "\u21ba Kept from the previous launch"
+      ],
+      "started_at": "2026-11-17T19:37:33.725491Z",
+      "finished_at": "2026-11-17T19:37:33.772298Z"
+     },
+     {
+      "key": "repository",
+      "title": "Create repository",
+      "position": 1,
+      "status": "succeeded",
+      "detail": "launchbay-labs/pulsar-api",
+      "logs": [
+       "POST /orgs/launchbay-labs/repos name=pulsar-api",
+       "Rendering template 'python-fastapi' (11 files)",
+       "  + .dockerignore",
+       "  + .github/workflows/ci.yml",
+       "  + .gitignore",
+       "  + app/__init__.py",
+       "  + app/main.py",
+       "  + Dockerfile",
+       "  + pyproject.toml",
+       "  + README.md",
+       "  + requirements-dev.txt",
+       "  + requirements.txt",
+       "  + tests/test_main.py",
+       "Created commit 02e3826 on main",
+       "\u21ba Kept from the previous launch"
+      ],
+      "started_at": "2026-11-17T19:37:33.784582Z",
+      "finished_at": "2026-11-17T19:37:45.556240Z"
+     },
+     {
+      "key": "pipeline",
+      "title": "Build, scan & sign",
+      "position": 2,
+      "status": "succeeded",
+      "detail": "ghcr.io/launchbay-labs/pulsar-api:02e3826bf03bc05b00ab4a906d1537d49757a9f3",
+      "logs": [
+       "Workflow 'ci' in progress",
+       "Workflow 'ci' queued",
+       "Workflow 'ci' completed",
+       "Run: https://github.com/launchbay-labs/pulsar-api/actions/runs/44160642578",
+       "Image: ghcr.io/launchbay-labs/pulsar-api:02e3826bf03bc05b00ab4a906d1537d49757a9f3",
+       "\u21ba Kept from the previous launch"
+      ],
+      "started_at": "2026-11-17T19:37:45.566705Z",
+      "finished_at": "2026-11-17T19:39:21.256610Z"
+     },
+     {
+      "key": "gitops",
+      "title": "Register with GitOps",
+      "position": 3,
+      "status": "succeeded",
+      "detail": "services/pulsar-api.yaml",
+      "logs": [
+       "  name: pulsar-api",
+       "  owner: team-platform",
+       "  template: python-fastapi",
+       "  image: ghcr.io/launchbay-labs/pulsar-api:02e3826bf03bc05b00ab4a906d1537d49757a9f3",
+       "  port: 8000",
+       "  host: pulsar-api.localtest.me",
+       "  runAsUser: 10001",
+       "Committed services/pulsar-api.yaml to launchbay-gitops",
+       "\u21ba Kept from the previous launch"
+      ],
+      "started_at": "2026-11-17T19:39:21.264843Z",
+      "finished_at": "2026-11-17T19:39:22.515587Z"
+     },
+     {
+      "key": "deploy",
+      "title": "Deploy with Argo CD",
+      "position": 4,
+      "status": "succeeded",
+      "detail": "Synced \u00b7 Healthy",
+      "logs": [
+       "Sync: Synced \u00b7 Health: Healthy"
+      ],
+      "started_at": "2026-11-17T20:09:18.968502Z",
+      "finished_at": "2026-11-17T20:09:19.017251Z"
+     },
+     {
+      "key": "live",
+      "title": "Go live",
+      "position": 5,
+      "status": "succeeded",
+      "detail": "http://pulsar-api.localtest.me",
+      "logs": [
+       "GET http://pulsar-api.localtest.me/healthz",
+       "200 OK in 26ms"
+      ],
+      "started_at": "2026-11-17T20:09:19.027429Z",
+      "finished_at": "2026-11-17T20:09:19.314949Z"
+     }
+    ],
+    "explanation": null
+   },
+   "cloud": null
+  }
+ ],
+ "scorecards": {
+  "vega-api": {
+   "service": "vega-api",
+   "score": 100,
+   "grade": "Gold",
+   "checked_at": "2026-11-18T08:55:20.111337Z",
+   "checks": [
+    {
+     "id": "owner",
+     "title": "Has an owning team",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "Someone is on call for it.",
+     "remedy": "Set an owner when launching.",
+     "result": "pass",
+     "detail": "team-platform"
+    },
+    {
+     "id": "description",
+     "title": "Says what it does",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "A one-line description in the catalog.",
+     "remedy": "Add a description to the service.",
+     "result": "pass",
+     "detail": "Described"
+    },
+    {
+     "id": "readme",
+     "title": "Has a README",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "The repo explains how to run and change it.",
+     "remedy": "Add a README.md to the repo.",
+     "result": "pass",
+     "detail": "README.md found"
+    },
+    {
+     "id": "ci",
+     "title": "CI is green on main",
+     "category": "Delivery",
+     "weight": 3,
+     "description": "The latest pipeline run on main passed.",
+     "remedy": "Fix the failing pipeline on main.",
+     "result": "pass",
+     "detail": "Latest run passed"
+    },
+    {
+     "id": "fresh",
+     "title": "Changed in the last 90 days",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Someone has committed to main recently.",
+     "remedy": "Ship a change, or retire the service.",
+     "result": "pass",
+     "detail": "Last commit 0 days ago"
+    },
+    {
+     "id": "dependabot",
+     "title": "Dependencies stay updated",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Dependabot opens update PRs.",
+     "remedy": "Add .github/dependabot.yml.",
+     "result": "pass",
+     "detail": "dependabot.yml found"
+    },
+    {
+     "id": "scans",
+     "title": "No known vulnerabilities",
+     "category": "Security",
+     "weight": 3,
+     "description": "Trivy's source and image scans passed.",
+     "remedy": "Upgrade the packages Trivy flags.",
+     "result": "skip",
+     "detail": "Could not check"
+    },
+    {
+     "id": "signed",
+     "title": "Signed image admitted",
+     "category": "Security",
+     "weight": 3,
+     "description": "Kyverno verified its cosign signature at deploy.",
+     "remedy": "Deploy only images CI signed.",
+     "result": "pass",
+     "detail": "Admitted by the signed-images guardrail"
+    },
+    {
+     "id": "encrypted",
+     "title": "Cloud data encrypted",
+     "category": "Security",
+     "weight": 2,
+     "description": "Its resources use a KMS key of its own.",
+     "remedy": "Provision resources through Launchbay.",
+     "result": "pass",
+     "detail": "KMS key alias/launchbay/vega-api"
+    },
+    {
+     "id": "healthy",
+     "title": "Healthy in the cluster",
+     "category": "Reliability",
+     "weight": 3,
+     "description": "Argo CD reports it Synced and Healthy.",
+     "remedy": "Look at the pods' events and logs.",
+     "result": "pass",
+     "detail": "Synced and Healthy"
+    },
+    {
+     "id": "responding",
+     "title": "Answers its health check",
+     "category": "Reliability",
+     "weight": 2,
+     "description": "GET /healthz returns 200 right now.",
+     "remedy": "Make /healthz respond, then redeploy.",
+     "result": "pass",
+     "detail": "/healthz returned 200"
+    }
+   ]
+  },
+  "nova-api": {
+   "service": "nova-api",
+   "score": 100,
+   "grade": "Gold",
+   "checked_at": "2026-11-18T08:55:23.602850Z",
+   "checks": [
+    {
+     "id": "owner",
+     "title": "Has an owning team",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "Someone is on call for it.",
+     "remedy": "Set an owner when launching.",
+     "result": "pass",
+     "detail": "team-platform"
+    },
+    {
+     "id": "description",
+     "title": "Says what it does",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "A one-line description in the catalog.",
+     "remedy": "Add a description to the service.",
+     "result": "pass",
+     "detail": "Described"
+    },
+    {
+     "id": "readme",
+     "title": "Has a README",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "The repo explains how to run and change it.",
+     "remedy": "Add a README.md to the repo.",
+     "result": "pass",
+     "detail": "README.md found"
+    },
+    {
+     "id": "ci",
+     "title": "CI is green on main",
+     "category": "Delivery",
+     "weight": 3,
+     "description": "The latest pipeline run on main passed.",
+     "remedy": "Fix the failing pipeline on main.",
+     "result": "pass",
+     "detail": "Latest run passed"
+    },
+    {
+     "id": "fresh",
+     "title": "Changed in the last 90 days",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Someone has committed to main recently.",
+     "remedy": "Ship a change, or retire the service.",
+     "result": "pass",
+     "detail": "Last commit 0 days ago"
+    },
+    {
+     "id": "dependabot",
+     "title": "Dependencies stay updated",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Dependabot opens update PRs.",
+     "remedy": "Add .github/dependabot.yml.",
+     "result": "pass",
+     "detail": "dependabot.yml found"
+    },
+    {
+     "id": "scans",
+     "title": "No known vulnerabilities",
+     "category": "Security",
+     "weight": 3,
+     "description": "Trivy's source and image scans passed.",
+     "remedy": "Upgrade the packages Trivy flags.",
+     "result": "skip",
+     "detail": "Could not check"
+    },
+    {
+     "id": "signed",
+     "title": "Signed image admitted",
+     "category": "Security",
+     "weight": 3,
+     "description": "Kyverno verified its cosign signature at deploy.",
+     "remedy": "Deploy only images CI signed.",
+     "result": "pass",
+     "detail": "Admitted by the signed-images guardrail"
+    },
+    {
+     "id": "encrypted",
+     "title": "Cloud data encrypted",
+     "category": "Security",
+     "weight": 2,
+     "description": "Its resources use a KMS key of its own.",
+     "remedy": "Provision resources through Launchbay.",
+     "result": "pass",
+     "detail": "KMS key alias/launchbay/nova-api"
+    },
+    {
+     "id": "healthy",
+     "title": "Healthy in the cluster",
+     "category": "Reliability",
+     "weight": 3,
+     "description": "Argo CD reports it Synced and Healthy.",
+     "remedy": "Look at the pods' events and logs.",
+     "result": "pass",
+     "detail": "Synced and Healthy"
+    },
+    {
+     "id": "responding",
+     "title": "Answers its health check",
+     "category": "Reliability",
+     "weight": 2,
+     "description": "GET /healthz returns 200 right now.",
+     "remedy": "Make /healthz respond, then redeploy.",
+     "result": "pass",
+     "detail": "/healthz returned 200"
+    }
+   ]
+  },
+  "flare-api": {
+   "service": "flare-api",
+   "score": 45,
+   "grade": "Needs work",
+   "checked_at": "2026-11-18T08:55:26.575615Z",
+   "checks": [
+    {
+     "id": "owner",
+     "title": "Has an owning team",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "Someone is on call for it.",
+     "remedy": "Set an owner when launching.",
+     "result": "pass",
+     "detail": "team-payments"
+    },
+    {
+     "id": "description",
+     "title": "Says what it does",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "A one-line description in the catalog.",
+     "remedy": "Add a description to the service.",
+     "result": "pass",
+     "detail": "Described"
+    },
+    {
+     "id": "readme",
+     "title": "Has a README",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "The repo explains how to run and change it.",
+     "remedy": "Add a README.md to the repo.",
+     "result": "pass",
+     "detail": "README.md found"
+    },
+    {
+     "id": "ci",
+     "title": "CI is green on main",
+     "category": "Delivery",
+     "weight": 3,
+     "description": "The latest pipeline run on main passed.",
+     "remedy": "Fix the failing pipeline on main.",
+     "result": "fail",
+     "detail": "Latest run: failure"
+    },
+    {
+     "id": "fresh",
+     "title": "Changed in the last 90 days",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Someone has committed to main recently.",
+     "remedy": "Ship a change, or retire the service.",
+     "result": "pass",
+     "detail": "Last commit 0 days ago"
+    },
+    {
+     "id": "dependabot",
+     "title": "Dependencies stay updated",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Dependabot opens update PRs.",
+     "remedy": "Add .github/dependabot.yml.",
+     "result": "pass",
+     "detail": "dependabot.yml found"
+    },
+    {
+     "id": "scans",
+     "title": "No known vulnerabilities",
+     "category": "Security",
+     "weight": 3,
+     "description": "Trivy's source and image scans passed.",
+     "remedy": "Upgrade the packages Trivy flags.",
+     "result": "skip",
+     "detail": "Could not check"
+    },
+    {
+     "id": "signed",
+     "title": "Signed image admitted",
+     "category": "Security",
+     "weight": 3,
+     "description": "Kyverno verified its cosign signature at deploy.",
+     "remedy": "Deploy only images CI signed.",
+     "result": "fail",
+     "detail": "Not deployed yet"
+    },
+    {
+     "id": "encrypted",
+     "title": "Cloud data encrypted",
+     "category": "Security",
+     "weight": 2,
+     "description": "Its resources use a KMS key of its own.",
+     "remedy": "Provision resources through Launchbay.",
+     "result": "skip",
+     "detail": "No cloud resources"
+    },
+    {
+     "id": "healthy",
+     "title": "Healthy in the cluster",
+     "category": "Reliability",
+     "weight": 3,
+     "description": "Argo CD reports it Synced and Healthy.",
+     "remedy": "Look at the pods' events and logs.",
+     "result": "skip",
+     "detail": "Could not reach Argo CD"
+    },
+    {
+     "id": "responding",
+     "title": "Answers its health check",
+     "category": "Reliability",
+     "weight": 2,
+     "description": "GET /healthz returns 200 right now.",
+     "remedy": "Make /healthz respond, then redeploy.",
+     "result": "skip",
+     "detail": "Could not check"
+    }
+   ]
+  },
+  "quasar-api": {
+   "service": "quasar-api",
+   "score": 90,
+   "grade": "Gold",
+   "checked_at": "2026-11-18T08:55:29.718539Z",
+   "checks": [
+    {
+     "id": "owner",
+     "title": "Has an owning team",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "Someone is on call for it.",
+     "remedy": "Set an owner when launching.",
+     "result": "pass",
+     "detail": "team-platform"
+    },
+    {
+     "id": "description",
+     "title": "Says what it does",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "A one-line description in the catalog.",
+     "remedy": "Add a description to the service.",
+     "result": "fail",
+     "detail": "No description"
+    },
+    {
+     "id": "readme",
+     "title": "Has a README",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "The repo explains how to run and change it.",
+     "remedy": "Add a README.md to the repo.",
+     "result": "pass",
+     "detail": "README.md found"
+    },
+    {
+     "id": "ci",
+     "title": "CI is green on main",
+     "category": "Delivery",
+     "weight": 3,
+     "description": "The latest pipeline run on main passed.",
+     "remedy": "Fix the failing pipeline on main.",
+     "result": "pass",
+     "detail": "Latest run passed"
+    },
+    {
+     "id": "fresh",
+     "title": "Changed in the last 90 days",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Someone has committed to main recently.",
+     "remedy": "Ship a change, or retire the service.",
+     "result": "pass",
+     "detail": "Last commit 0 days ago"
+    },
+    {
+     "id": "dependabot",
+     "title": "Dependencies stay updated",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Dependabot opens update PRs.",
+     "remedy": "Add .github/dependabot.yml.",
+     "result": "fail",
+     "detail": "No dependabot.yml"
+    },
+    {
+     "id": "scans",
+     "title": "No known vulnerabilities",
+     "category": "Security",
+     "weight": 3,
+     "description": "Trivy's source and image scans passed.",
+     "remedy": "Upgrade the packages Trivy flags.",
+     "result": "pass",
+     "detail": "Trivy scans passed"
+    },
+    {
+     "id": "signed",
+     "title": "Signed image admitted",
+     "category": "Security",
+     "weight": 3,
+     "description": "Kyverno verified its cosign signature at deploy.",
+     "remedy": "Deploy only images CI signed.",
+     "result": "pass",
+     "detail": "Admitted by the signed-images guardrail"
+    },
+    {
+     "id": "encrypted",
+     "title": "Cloud data encrypted",
+     "category": "Security",
+     "weight": 2,
+     "description": "Its resources use a KMS key of its own.",
+     "remedy": "Provision resources through Launchbay.",
+     "result": "pass",
+     "detail": "KMS key alias/launchbay/quasar-api"
+    },
+    {
+     "id": "healthy",
+     "title": "Healthy in the cluster",
+     "category": "Reliability",
+     "weight": 3,
+     "description": "Argo CD reports it Synced and Healthy.",
+     "remedy": "Look at the pods' events and logs.",
+     "result": "pass",
+     "detail": "Synced and Healthy"
+    },
+    {
+     "id": "responding",
+     "title": "Answers its health check",
+     "category": "Reliability",
+     "weight": 2,
+     "description": "GET /healthz returns 200 right now.",
+     "remedy": "Make /healthz respond, then redeploy.",
+     "result": "pass",
+     "detail": "/healthz returned 200"
+    }
+   ]
+  },
+  "comet-site": {
+   "service": "comet-site",
+   "score": 89,
+   "grade": "Silver",
+   "checked_at": "2026-11-18T08:55:33.069958Z",
+   "checks": [
+    {
+     "id": "owner",
+     "title": "Has an owning team",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "Someone is on call for it.",
+     "remedy": "Set an owner when launching.",
+     "result": "pass",
+     "detail": "team-platform"
+    },
+    {
+     "id": "description",
+     "title": "Says what it does",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "A one-line description in the catalog.",
+     "remedy": "Add a description to the service.",
+     "result": "fail",
+     "detail": "No description"
+    },
+    {
+     "id": "readme",
+     "title": "Has a README",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "The repo explains how to run and change it.",
+     "remedy": "Add a README.md to the repo.",
+     "result": "pass",
+     "detail": "README.md found"
+    },
+    {
+     "id": "ci",
+     "title": "CI is green on main",
+     "category": "Delivery",
+     "weight": 3,
+     "description": "The latest pipeline run on main passed.",
+     "remedy": "Fix the failing pipeline on main.",
+     "result": "pass",
+     "detail": "Latest run passed"
+    },
+    {
+     "id": "fresh",
+     "title": "Changed in the last 90 days",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Someone has committed to main recently.",
+     "remedy": "Ship a change, or retire the service.",
+     "result": "pass",
+     "detail": "Last commit 0 days ago"
+    },
+    {
+     "id": "dependabot",
+     "title": "Dependencies stay updated",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Dependabot opens update PRs.",
+     "remedy": "Add .github/dependabot.yml.",
+     "result": "fail",
+     "detail": "No dependabot.yml"
+    },
+    {
+     "id": "scans",
+     "title": "No known vulnerabilities",
+     "category": "Security",
+     "weight": 3,
+     "description": "Trivy's source and image scans passed.",
+     "remedy": "Upgrade the packages Trivy flags.",
+     "result": "pass",
+     "detail": "Trivy scans passed"
+    },
+    {
+     "id": "signed",
+     "title": "Signed image admitted",
+     "category": "Security",
+     "weight": 3,
+     "description": "Kyverno verified its cosign signature at deploy.",
+     "remedy": "Deploy only images CI signed.",
+     "result": "pass",
+     "detail": "Admitted by the signed-images guardrail"
+    },
+    {
+     "id": "encrypted",
+     "title": "Cloud data encrypted",
+     "category": "Security",
+     "weight": 2,
+     "description": "Its resources use a KMS key of its own.",
+     "remedy": "Provision resources through Launchbay.",
+     "result": "skip",
+     "detail": "No cloud resources"
+    },
+    {
+     "id": "healthy",
+     "title": "Healthy in the cluster",
+     "category": "Reliability",
+     "weight": 3,
+     "description": "Argo CD reports it Synced and Healthy.",
+     "remedy": "Look at the pods' events and logs.",
+     "result": "pass",
+     "detail": "Synced and Healthy"
+    },
+    {
+     "id": "responding",
+     "title": "Answers its health check",
+     "category": "Reliability",
+     "weight": 2,
+     "description": "GET /healthz returns 200 right now.",
+     "remedy": "Make /healthz respond, then redeploy.",
+     "result": "pass",
+     "detail": "/healthz returned 200"
+    }
+   ]
+  },
+  "pulsar-api": {
+   "service": "pulsar-api",
+   "score": 95,
+   "grade": "Gold",
+   "checked_at": "2026-11-18T08:55:36.334278Z",
+   "checks": [
+    {
+     "id": "owner",
+     "title": "Has an owning team",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "Someone is on call for it.",
+     "remedy": "Set an owner when launching.",
+     "result": "pass",
+     "detail": "team-platform"
+    },
+    {
+     "id": "description",
+     "title": "Says what it does",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "A one-line description in the catalog.",
+     "remedy": "Add a description to the service.",
+     "result": "pass",
+     "detail": "Described"
+    },
+    {
+     "id": "readme",
+     "title": "Has a README",
+     "category": "Ownership",
+     "weight": 1,
+     "description": "The repo explains how to run and change it.",
+     "remedy": "Add a README.md to the repo.",
+     "result": "pass",
+     "detail": "README.md found"
+    },
+    {
+     "id": "ci",
+     "title": "CI is green on main",
+     "category": "Delivery",
+     "weight": 3,
+     "description": "The latest pipeline run on main passed.",
+     "remedy": "Fix the failing pipeline on main.",
+     "result": "pass",
+     "detail": "Latest run passed"
+    },
+    {
+     "id": "fresh",
+     "title": "Changed in the last 90 days",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Someone has committed to main recently.",
+     "remedy": "Ship a change, or retire the service.",
+     "result": "pass",
+     "detail": "Last commit 0 days ago"
+    },
+    {
+     "id": "dependabot",
+     "title": "Dependencies stay updated",
+     "category": "Delivery",
+     "weight": 1,
+     "description": "Dependabot opens update PRs.",
+     "remedy": "Add .github/dependabot.yml.",
+     "result": "fail",
+     "detail": "No dependabot.yml"
+    },
+    {
+     "id": "scans",
+     "title": "No known vulnerabilities",
+     "category": "Security",
+     "weight": 3,
+     "description": "Trivy's source and image scans passed.",
+     "remedy": "Upgrade the packages Trivy flags.",
+     "result": "pass",
+     "detail": "Trivy scans passed"
+    },
+    {
+     "id": "signed",
+     "title": "Signed image admitted",
+     "category": "Security",
+     "weight": 3,
+     "description": "Kyverno verified its cosign signature at deploy.",
+     "remedy": "Deploy only images CI signed.",
+     "result": "pass",
+     "detail": "Admitted by the signed-images guardrail"
+    },
+    {
+     "id": "encrypted",
+     "title": "Cloud data encrypted",
+     "category": "Security",
+     "weight": 2,
+     "description": "Its resources use a KMS key of its own.",
+     "remedy": "Provision resources through Launchbay.",
+     "result": "skip",
+     "detail": "No cloud resources"
+    },
+    {
+     "id": "healthy",
+     "title": "Healthy in the cluster",
+     "category": "Reliability",
+     "weight": 3,
+     "description": "Argo CD reports it Synced and Healthy.",
+     "remedy": "Look at the pods' events and logs.",
+     "result": "pass",
+     "detail": "Synced and Healthy"
+    },
+    {
+     "id": "responding",
+     "title": "Answers its health check",
+     "category": "Reliability",
+     "weight": 2,
+     "description": "GET /healthz returns 200 right now.",
+     "remedy": "Make /healthz respond, then redeploy.",
+     "result": "pass",
+     "detail": "/healthz returned 200"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,24 @@
+# Render Blueprint for the public demo API (render.com, free web service).
+# The portal is a static site on Cloudflare Pages; see docs/public-demo.md.
+services:
+  - type: web
+    name: launchbay-demo-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./services/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/healthz
+    autoDeploy: true
+    # Only rebuild when something the API image contains changes.
+    buildFilter:
+      paths:
+        - services/api/**
+        - templates/**
+        - platform/kyverno/policies/**
+    envVars:
+      - key: LAUNCHBAY_PUBLIC_DEMO
+        value: "true"
+      # The portal's address on Cloudflare Pages. Change it if your project gets another name.
+      - key: LAUNCHBAY_CORS_ORIGINS
+        value: '["https://launchbay.pages.dev"]'

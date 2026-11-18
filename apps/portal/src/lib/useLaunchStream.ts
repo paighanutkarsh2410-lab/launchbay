@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useReducer } from "react";
-import type { Launch, Step, StepStatus } from "./api";
+import { API_BASE, type Launch, type Step, type StepStatus } from "./api";
 
 export interface LaunchState {
   launch: Launch | null;
@@ -70,7 +70,7 @@ export function useLaunchStream(name: string | undefined, launchId?: string): La
   useEffect(() => {
     if (!name) return;
     dispatch({ type: "reset" });
-    const source = new EventSource(`/api/services/${name}/events`);
+    const source = new EventSource(`${API_BASE}/api/services/${name}/events`);
     const on = <T,>(type: string, handler: (data: T) => void) =>
       source.addEventListener(type, (event) => handler(JSON.parse((event as MessageEvent).data) as T));
 

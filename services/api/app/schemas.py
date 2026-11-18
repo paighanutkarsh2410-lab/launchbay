@@ -177,6 +177,12 @@ class ScoreSummary(BaseModel):
     grade: str
 
 
+class InfoOut(BaseModel):
+    public_demo: bool
+    demo_ttl_hours: float | None
+    project_url: str
+
+
 class AssistantInfo(BaseModel):
     source: Literal["claude", "gemini", "rules"]
     label: str

@@ -138,6 +138,13 @@ emulator inside it. GitHub (repos, Actions, GHCR) is the only outside service.
 - **Golden-path templates.** Python (FastAPI), Node (Express) and a static site, each with tests,
   a non-root container and CI.
 
+## Try it
+
+A public demo runs the same portal and API with every launch simulated, so anyone can click
+through a launch without credentials. It is seeded from this Launchbay's real services and kept safe
+for the open internet (read-only showcase, rate limits, automatic cleanup). How it is hosted for
+free, on Cloudflare Pages and Render: [docs/public-demo.md](docs/public-demo.md).
+
 ## Run it
 
 You need Python 3.12 and Node 22.
@@ -243,6 +250,7 @@ and video in `docs/media` from a running Launchbay.
 | `scripts/verify-guardrails.sh` | Proves the guardrails on the live cluster |
 | `docs/architecture.md` | Design and roadmap |
 | `docs/media/` | Screenshots and the demo video |
+| `render.yaml` | The public demo's API on Render (the portal goes on Cloudflare Pages) |
 
 ## Roadmap
 

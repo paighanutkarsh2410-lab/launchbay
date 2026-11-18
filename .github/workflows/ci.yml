@@ -44,6 +44,24 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  demo-image:
+    name: Public demo image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the API image
+        run: docker build -f services/api/Dockerfile -t launchbay-api .
+      - name: It starts in demo mode, seeded and guarded
+        run: |
+          docker run -d --name demo -p 8000:8000 -e LAUNCHBAY_PUBLIC_DEMO=true launchbay-api
+          for i in $(seq 1 30); do curl -fs localhost:8000/api/healthz >/dev/null && break; sleep 1; done
+          curl -fs localhost:8000/api/info | grep -q '"public_demo":true'
+          test "$(curl -fs localhost:8000/api/services | grep -o '"name"' | wc -l)" -ge 1
+          seeded="$(curl -fs localhost:8000/api/services | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["name"])')"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8000/api/services/$seeded/retry)" = 403
+      - if: failure()
+        run: docker logs demo
+
   e2e:
     name: Portal smoke tests (Playwright)
     runs-on: ubuntu-latest

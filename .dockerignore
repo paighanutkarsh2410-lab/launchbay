@@ -1,0 +1,15 @@
+# Only what the API image copies is needed; keep everything else (and anything secret) out.
+**/.git
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.db
+**/.env
+**/*.pem
+**/.terraform
+**/*.tfstate*
+**/test-results
+**/dist
+docs
+apps
+.claude

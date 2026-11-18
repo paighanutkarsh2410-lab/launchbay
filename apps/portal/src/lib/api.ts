@@ -153,8 +153,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Where the API lives: same origin in development, its own host for the public demo. */
+export const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_BASE}/api${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
@@ -169,7 +172,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export interface Info {
+  public_demo: boolean;
+  demo_ttl_hours: number | null;
+  project_url: string;
+}
+
 export const api = {
+  info: () => request<Info>("/info"),
   templates: () => request<Template[]>("/templates"),
   services: () => request<Service[]>("/services"),
   service: (name: string) => request<ServiceDetail>(`/services/${name}`),

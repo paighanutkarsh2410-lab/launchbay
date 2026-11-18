@@ -27,6 +27,7 @@ from app.schemas import (
     DecommissionRequest,
     DecommissionResult,
     GuardrailOut,
+    InfoOut,
     LaunchOut,
     NameCheck,
     ResourceKindOut,
@@ -55,6 +56,22 @@ def get_catalog(request: Request) -> TemplateCatalog:
 
 def get_launcher(request: Request) -> Launcher:
     return request.app.state.launcher
+
+
+def protect(request: Request, name: str) -> None:
+    """In the public demo, the seeded services can't be changed."""
+    if request.app.state.demo:
+        request.app.state.demo.protect(name)
+
+
+@router.get("/info", response_model=InfoOut)
+async def info(request: Request) -> InfoOut:
+    settings = request.app.state.settings
+    return InfoOut(
+        public_demo=settings.public_demo,
+        demo_ttl_hours=settings.demo_ttl_hours if settings.public_demo else None,
+        project_url=settings.project_url,
+    )
 
 
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -97,6 +114,7 @@ async def check_name(name: str, session: Session) -> NameCheck:
 @router.post("/services", response_model=ServiceOut, status_code=status.HTTP_201_CREATED)
 async def create_service(
     body: ServiceCreate,
+    request: Request,
     session: Session,
     catalog: Catalog,
     launcher: Annotated[Launcher, Depends(get_launcher)],
@@ -105,6 +123,8 @@ async def create_service(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown template")
     if await session.scalar(select(func.count()).where(Service.name == body.name)):
         raise HTTPException(status.HTTP_409_CONFLICT, f"A service named '{body.name}' exists")
+    if request.app.state.demo:
+        await request.app.state.demo.admit_launch(request, session)
     return await launcher.create(
         session,
         name=body.name,
@@ -172,9 +192,13 @@ async def stream_events(name: str, request: Request, session: Session) -> EventS
     "/services/{name}/retry", response_model=ServiceOut, status_code=status.HTTP_202_ACCEPTED
 )
 async def retry_service(
-    name: str, session: Session, launcher: Annotated[Launcher, Depends(get_launcher)]
+    name: str,
+    request: Request,
+    session: Session,
+    launcher: Annotated[Launcher, Depends(get_launcher)],
 ) -> Service:
     """Resumes a failed launch at the stage that failed, keeping the stages that succeeded."""
+    protect(request, name)
     service = await _load_service(session, name)
     if service.status != ServiceStatus.FAILED:
         raise HTTPException(status.HTTP_409_CONFLICT, "Only a failed launch can be retried")
@@ -186,10 +210,12 @@ async def retry_service(
 async def decommission_service(
     name: str,
     body: DecommissionRequest,
+    request: Request,
     session: Session,
     launcher: Annotated[Launcher, Depends(get_launcher)],
 ) -> DecommissionResult:
     """Takes a service out of GitOps (Argo CD prunes it) and archives or deletes its repo."""
+    protect(request, name)
     service = await _load_service(session, name)
     if service.status == ServiceStatus.LAUNCHING:
         raise HTTPException(status.HTTP_409_CONFLICT, "Wait for the launch to finish first")
@@ -272,6 +298,9 @@ async def get_scorecard(
     service = await _load_service(session, name)
     if not scorable(service):
         raise HTTPException(status.HTTP_409_CONFLICT, "Scorecards cover launched services")
+    demo = request.app.state.demo
+    if demo and name in demo.scorecards:
+        return ScorecardOut.model_validate(demo.scorecards[name])
     card = await request.app.state.scorecards.get(
         service, launcher._request(service), launcher.provider, fresh=fresh
     )
@@ -290,14 +319,26 @@ async def list_scorecards(
         if scorable(s)
     ]
     scorecards = request.app.state.scorecards
+    pinned = request.app.state.demo.scorecards if request.app.state.demo else {}
     cards = await asyncio.gather(
-        *(scorecards.get(s, launcher._request(s), launcher.provider) for s in services),
+        *(
+            scorecards.get(s, launcher._request(s), launcher.provider)
+            for s in services
+            if s.name not in pinned
+        ),
         return_exceptions=True,
     )
     return [
-        ScoreSummary(service=card.service, score=card.score, grade=card.grade)
-        for card in cards
-        if isinstance(card, Scorecard)
+        *(
+            ScoreSummary(service=c["service"], score=c["score"], grade=c["grade"])
+            for name, c in pinned.items()
+            if any(s.name == name for s in services)
+        ),
+        *(
+            ScoreSummary(service=card.service, score=card.score, grade=card.grade)
+            for card in cards
+            if isinstance(card, Scorecard)
+        ),
     ]
 
 
@@ -325,7 +366,9 @@ async def explain_failure(
     step = launch and next((s for s in launch.steps if s.status == StepStatus.FAILED), None)
     if launch is None or step is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "No failed launch to explain")
-    if launch.explanation and not refresh:
+    if launch.explanation and (
+        not refresh or (request.app.state.demo and name in request.app.state.demo.seeded)
+    ):
         return ExplanationOut.model_validate(launch.explanation)
 
     launch_request = launcher._request(service)

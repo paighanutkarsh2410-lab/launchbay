@@ -10,6 +10,7 @@ from app.api import router
 from app.cloud import build_cloud
 from app.config import Settings, get_settings
 from app.db import Database
+from app.demo import PublicDemo
 from app.events import EventBroker
 from app.explainer import build_explainer
 from app.launcher import Launcher
@@ -56,7 +57,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.launcher = launcher = Launcher(
             db.sessions, build_provider(settings), catalog, events, cloud
         )
-        app.state.scorecards = Scorecards(settings.scorecard_ttl_seconds)
+        # In the public demo, service URLs point at nothing, so health probes are skipped.
+        app.state.scorecards = Scorecards(
+            settings.scorecard_ttl_seconds, probe=not settings.public_demo
+        )
         app.state.explainer = build_explainer(
             settings.explainer,
             settings.anthropic_key(),
@@ -65,13 +69,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.gemini_model,
             settings.gemini_overflow_model,
         )
+        app.state.demo = demo = None
+        background = []
+        if settings.public_demo:
+            app.state.demo = demo = PublicDemo(
+                settings.demo_snapshot,
+                settings.demo_ttl_hours,
+                settings.demo_launches_per_hour,
+                settings.demo_max_running,
+            )
+            await demo.seed(db)
+            background.append(asyncio.create_task(demo.cleanup_forever(db), name="demo-cleanup"))
         reconcile = None
         if settings.cloud == "emulator":
             # In the background: startup should not wait on Terraform.
             reconcile = asyncio.create_task(launcher.reconcile_cloud(), name="reconcile-cloud")
         yield
-        if reconcile:
-            reconcile.cancel()
+        for task in [*background, *([reconcile] if reconcile else [])]:
+            task.cancel()
         await app.state.launcher.shutdown()
         await db.dispose()
 

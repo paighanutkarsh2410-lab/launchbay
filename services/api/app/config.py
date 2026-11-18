@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 API_ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     templates_dir: Path = REPO_ROOT / "templates"
     policies_dir: Path = REPO_ROOT / "platform" / "kyverno" / "policies"
+
+    # A public demo anyone can use: forces the demo provider, simulated cloud and rule-based
+    # explanations, seeds from a snapshot and guards it (see app/demo.py).
+    public_demo: bool = False
+    demo_snapshot: Path = API_ROOT / "demo" / "snapshot.json"
+    demo_ttl_hours: float = 3
+    demo_launches_per_hour: int = 3
+    demo_max_running: int = 6
+    # Linked from the portal (the demo banner and the sidebar).
+    project_url: str = "https://github.com/paighanutkarsh2410-lab/launchbay"
 
     # "demo" simulates every stage; "github" does it for real.
     provider: Literal["demo", "github"] = "demo"
@@ -60,6 +70,15 @@ class Settings(BaseSettings):
     gemini_overflow_model: str | None = "gemini-3.5-flash-lite"
     # How long scorecards are reused before their checks run again.
     scorecard_ttl_seconds: int = 300
+
+    @model_validator(mode="after")
+    def _public_demo_is_simulated(self) -> "Settings":
+        # Visitors must never reach GitHub, a cluster, a cloud or a paid model.
+        if self.public_demo:
+            self.provider = "demo"
+            self.cloud = "simulated"
+            self.explainer = "rules"
+        return self
 
     def anthropic_key(self) -> str | None:
         return _key(self.anthropic_api_key, self.anthropic_api_key_file)
