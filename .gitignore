@@ -24,3 +24,7 @@ dist/
 .terraform/
 *.tfstate
 *.tfstate.*
+
+# Playwright output
+test-results/
+playwright-report/

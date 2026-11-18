@@ -15,7 +15,7 @@ variables: values.yaml
 results:
   - policy: launchbay-restrict-registries
     kind: Pod
-    resources: [compliant, pinned-digest, runs-as-root, privileged, keeps-capabilities, host-network, no-limits, no-probes]
+    resources: [compliant, pinned-digest, runs-as-root, privileged, keeps-capabilities, host-network, writable-root, no-limits, no-probes]
     result: pass
   - policy: launchbay-restrict-registries
     kind: Pod
@@ -27,11 +27,11 @@ results:
     result: pass
   - policy: launchbay-pod-security
     kind: Pod
-    resources: [runs-as-root, privileged, keeps-capabilities, host-network]
+    resources: [runs-as-root, privileged, keeps-capabilities, host-network, writable-root]
     result: fail
   - policy: launchbay-require-operability
     kind: Pod
-    resources: [compliant, foreign-registry, latest-tag, untagged, pinned-digest, runs-as-root, privileged, keeps-capabilities, host-network]
+    resources: [compliant, foreign-registry, latest-tag, untagged, pinned-digest, runs-as-root, privileged, keeps-capabilities, host-network, writable-root]
     result: pass
   - policy: launchbay-require-operability
     kind: Pod

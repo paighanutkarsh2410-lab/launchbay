@@ -17,6 +17,15 @@ pipeline, and lets Argo CD put it live.
 ![Terraform](https://img.shields.io/badge/cloud-Terraform-7b42bc)
 ![cosign](https://img.shields.io/badge/images-signed%20with%20cosign-2e7d32)
 ![AI](https://img.shields.io/badge/failures%20explained%20by-Gemini%20%7C%20Claude%20%7C%20rules-7c5cff)
+![Playwright](https://img.shields.io/badge/e2e-Playwright-2ead33)
+
+<br />
+
+<img src="docs/media/demo/launch.gif" width="860" alt="Launching nova-api from the portal: picking a template, naming it, choosing cloud resources, then watching all seven stages run to a live service" />
+
+<sub>A real launch: a GitHub repo, Terraform resources, a tested, scanned and signed build, and an
+Argo CD deploy. The two-minute wait for CI is fast-forwarded.
+<a href="docs/media/demo/launchbay-demo.mp4">Watch the full demo (MP4)</a>.</sub>
 
 </div>
 
@@ -43,6 +52,48 @@ from idea to production. Launchbay is that path, end to end, running on a single
 Every stage is stored and streamed to the portal over Server-Sent Events, so you watch the launch
 happen: logs scroll in, the timeline fills, and the rocket flies.
 
+## How it fits together
+
+```mermaid
+flowchart LR
+  dev([Developer]) -->|picks a template| portal[Portal<br/>React 19]
+  portal <-->|REST + SSE| api[Launchbay API<br/>FastAPI]
+  api -->|GitHub App| repo[(Service repo)]
+  api -->|Terraform| aws[(AWS emulator<br/>S3 · SQS · DynamoDB)]
+  repo -->|Actions: test, Trivy,<br/>build, cosign| ghcr[(GHCR)]
+  api -->|commits a manifest| gitops[(launchbay-gitops)]
+  gitops --> argo[Argo CD<br/>ApplicationSet]
+  argo --> kyverno{Kyverno<br/>guardrails}
+  kyverno -->|admitted| svc[Service in its<br/>own namespace]
+  ghcr -. signed image .-> svc
+  svc -->|env vars| aws
+  api -. scorecards and<br/>failure explanations .-> ai[[Gemini · Claude · rules]]
+```
+
+Everything runs on one laptop: a kind cluster in Docker, with Argo CD, Kyverno, Traefik and the AWS
+emulator inside it. GitHub (repos, Actions, GHCR) is the only outside service.
+
+## Tour
+
+| | |
+|---|---|
+| ![Mission control](docs/media/mission-control.png) | ![Launch wizard](docs/media/launch-wizard.png) |
+| **Mission control.** Fleet stats, the seven stages, the guardrails and every service's scorecard. | **Launch wizard.** Template, name (checked live against GitHub), owner and the cloud resources the service needs. |
+| ![A live service](docs/media/service-live.png) | ![Failure explained](docs/media/failure-explained.png) |
+| **A live service.** The streamed timeline, each stage's log and the service's URL. | **A failure, explained.** Gemini read the failed CI job's log and found the broken test. |
+| ![Cloud resources](docs/media/cloud-resources.png) | ![Scorecard](docs/media/scorecard.png) |
+| **Cloud resources.** What Terraform made, each encrypted with the service's own KMS key, and the env vars the pod gets. | **Scorecard.** Eleven checks, live from GitHub, Argo CD and the service's health check. |
+
+<details>
+<summary>More: guardrails, the fleet leaderboard, the catalog and the phone layout</summary>
+
+![Guardrails](docs/media/guardrails.png)
+![Fleet scorecards](docs/media/fleet-scorecards.png)
+![Catalog](docs/media/catalog.png)
+<img src="docs/media/phone.png" width="320" alt="A service page on a phone" />
+
+</details>
+
 ## Highlights
 
 - **Live mission view.** A streamed timeline, per-stage terminal and an animated trajectory, built
@@ -53,7 +104,8 @@ happen: logs scroll in, the timeline fills, and the rocket flies.
   type-the-name confirmation.
 - **Guardrails, enforced.** Kyverno admits a workload only if its image is signed with cosign by
   *that service's own* CI on `main`, comes from `ghcr.io/launchbay-labs` with a pinned tag, runs
-  non-root without privilege escalation or host access, and declares resources and health probes.
+  non-root with a read-only root filesystem and no privilege escalation or host access, and declares
+  resources and health probes.
   The policies use Kyverno's CEL-based `ValidatingPolicy` and `ImageValidatingPolicy`; CI tests them
   with `kyverno test`, `scripts/verify-guardrails.sh` proves them on the live cluster, and a blocked
   deploy names the rule it broke.
@@ -160,11 +212,27 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
    (launchbay-gitops)      (git generator)    (charts/service)   Deployment · Service · Ingress · PDB
 ```
 
+## Tests
+
+| Suite | What it proves | Where it runs |
+|---|---|---|
+| API (pytest, 54 tests) | Launcher, retries, providers, Terraform runner, scorecards, every explainer fallback | CI |
+| Portal smoke tests (Playwright) | A launch from the wizard to a live service, the catalog and command palette, no sideways scrolling on a phone | CI, against the API in demo mode |
+| Guardrails (`kyverno test`, 36 cases) | Each policy admits the compliant pod and rejects each kind of bad one | CI |
+| Guardrails, live | The same rules, plus signature checks, enforced by the cluster's admission webhooks | `scripts/verify-guardrails.sh` |
+| Terraform | Module behaviour with a mocked provider, then a real apply and destroy against Moto | CI |
+| Templates | Each template renders, passes its own tests and builds its image | CI |
+| Trivy | No fixable critical or high vulnerabilities in the repo | CI |
+
+Run the smoke tests locally with `npm run e2e` in `apps/portal` (they start their own API and portal
+on spare ports). `node scripts/capture.mjs screenshots|demo` in `apps/portal` regenerates the images
+and video in `docs/media` from a running Launchbay.
+
 ## Layout
 
 | Path | What |
 |---|---|
-| `apps/portal` | React 19 + TypeScript portal |
+| `apps/portal` | React 19 + TypeScript portal, its Playwright smoke tests and the capture script |
 | `services/api` | FastAPI API, launcher, providers, scorecards and the failure explainer |
 | `templates/` | Golden-path templates rendered into new repos |
 | `platform/` | kind, Traefik and Argo CD configuration, and the ApplicationSet |
@@ -174,6 +242,7 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 | `platform/kyverno/` | Guardrail policies and their `kyverno test` suite |
 | `scripts/verify-guardrails.sh` | Proves the guardrails on the live cluster |
 | `docs/architecture.md` | Design and roadmap |
+| `docs/media/` | Screenshots and the demo video |
 
 ## Roadmap
 
@@ -184,4 +253,5 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 - [x] **Phase 2**: Kyverno guardrails (CEL policies), signed-image enforcement, policy tests in CI
 - [x] **Phase 3**: cloud resources (S3, SQS, DynamoDB) with Terraform, on a local AWS emulator
 - [x] **Phase 4**: service scorecards and an AI helper (Gemini or Claude) that explains failed launches
-- [ ] **Phase 5**: polish, screenshots and a demo video
+- [x] **Phase 5**: polish (phone layouts, accessibility, read-only root filesystems), Playwright smoke
+  tests, screenshots and a demo video

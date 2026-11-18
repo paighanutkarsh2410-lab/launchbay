@@ -1,6 +1,6 @@
 [project]
 name = "launchbay-api"
-version = "0.1.0"
+version = "1.0.0"
 description = "Launchbay API: launches services from templates to a running deployment"
 requires-python = ">=3.12"
 dependencies = [

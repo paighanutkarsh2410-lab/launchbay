@@ -104,7 +104,7 @@ function Answer({ explanation, onRefresh, refreshing }: { explanation: Explanati
         {explanation.cause}
       </motion.p>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div>
           <p className="text-[11px] uppercase tracking-widest text-faint">How to fix it</p>
           <ol className="mt-3 space-y-2.5">
@@ -133,7 +133,7 @@ function Answer({ explanation, onRefresh, refreshing }: { explanation: Explanati
             <p className="text-[11px] uppercase tracking-widest text-faint">Evidence</p>
             <div className="mt-3 overflow-x-auto rounded-xl border border-white/[0.06] bg-ink-950/70 px-4 py-3 font-mono text-[12px] leading-relaxed text-rose/90">
               {explanation.evidence.map((line, i) => (
-                <p key={i} className="whitespace-pre">
+                <p key={i} className="whitespace-pre-wrap break-words">
                   {line}
                 </p>
               ))}

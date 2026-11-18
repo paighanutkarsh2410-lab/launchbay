@@ -177,7 +177,7 @@ export function CloudPanel({ service, provisioning }: { service: ServiceDetail; 
         <TargetBadge label={info?.label} />
       </div>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <ul className="space-y-2">
           {pending &&
             service.resources.map((kind) => {

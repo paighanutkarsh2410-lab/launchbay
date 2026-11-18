@@ -44,6 +44,39 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  e2e:
+    name: Portal smoke tests (Playwright)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/portal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/api/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/portal/package-lock.json
+      - name: Install the API (it runs in demo mode)
+        working-directory: services/api
+        run: pip install -e .
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Launch a service through the portal, start to live
+        run: npm run e2e
+      - name: Keep traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/portal/test-results
+          retention-days: 7
+
   templates:
     name: Templates render, test and build
     runs-on: ubuntu-latest

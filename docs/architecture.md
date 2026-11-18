@@ -126,4 +126,4 @@ used for short, torn-down demos.
 2. Guardrails: Kyverno CEL policies (signed images, trusted registry, pod security, probes and resources)
 3. Cloud resources: Terraform modules (S3, SQS, DynamoDB) on the Moto emulator, AWS-ready
 4. Scorecards and AI helper: eleven-check scorecards, failures explained by Gemini, Claude or rules
-5. Polish: docs, screenshots, demo
+5. Polish: phone layouts, accessibility, read-only root filesystems, Playwright smoke tests in CI, screenshots and a demo video

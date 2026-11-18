@@ -8,6 +8,7 @@ metadata:
     launchbay.dev/rules: |
       Runs as a non-root user
       No privilege escalation; every Linux capability dropped
+      Read-only root filesystem
       No host network, PID, IPC or host paths
 spec:
   validationActions: [Deny]
@@ -38,6 +39,10 @@ spec:
           'ALL' in c.securityContext.capabilities.drop &&
           (!has(c.securityContext.privileged) || c.securityContext.privileged == false))
       message: "Containers must disallow privilege escalation, drop ALL capabilities and not be privileged."
+    - expression: >-
+        object.spec.containers.all(c, has(c.securityContext) &&
+          has(c.securityContext.readOnlyRootFilesystem) && c.securityContext.readOnlyRootFilesystem == true)
+      message: "Containers must set readOnlyRootFilesystem: true (write scratch files to an emptyDir)."
     - expression: >-
         !(has(object.spec.hostNetwork) && object.spec.hostNetwork) &&
         !(has(object.spec.hostPID) && object.spec.hostPID) &&

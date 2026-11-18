@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ArrowUpRight, Clock, Rocket } from "lucide-react";
 import { motion, type Variants } from "motion/react";
 import { Link, useNavigate } from "react-router";
+import { Fragment } from "react";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GlowCard } from "@/components/GlowCard";
 import { GuardrailsSection } from "@/components/Guardrails";
@@ -31,10 +32,13 @@ function Headline() {
     <h1 className="font-display text-[clamp(2.4rem,5.2vw,4.3rem)] font-semibold leading-[1.04] tracking-[-0.035em]">
       {lines.map((line, l) => (
         <span key={l} className="block">
+          {/* Real spaces between the words, so the heading reads (and copies) as a sentence. */}
           {line.map((word) => (
-            <motion.span key={word} variants={rise} custom={index++} className="mr-[0.24em] inline-block">
-              {word}
-            </motion.span>
+            <Fragment key={word}>
+              <motion.span variants={rise} custom={index++} className="inline-block">
+                {word}
+              </motion.span>{" "}
+            </Fragment>
           ))}
           {l === lines.length - 1 && (
             <motion.span variants={rise} custom={index} className="text-gradient inline-block">
@@ -72,7 +76,7 @@ export function Overview() {
   return (
     <div className="space-y-16">
       {/* Hero */}
-      <motion.section initial="hidden" animate="show" className="grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
+      <motion.section initial="hidden" animate="show" className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 overflow-x-clip lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div>
           <motion.span
             variants={rise}
@@ -85,8 +89,9 @@ export function Overview() {
             <Headline />
           </div>
           <motion.p variants={rise} custom={6} className="mt-6 max-w-lg text-[17px] leading-relaxed text-muted">
-            Pick a template and name your service. Launchbay creates the repo, runs a signed and scanned
-            pipeline, and lets Argo CD put it live. No tickets, no waiting.
+            Pick a template and name your service. Launchbay creates the repo, provisions its cloud
+            resources, runs a signed and scanned pipeline, and lets Argo CD put it live. No tickets, no
+            waiting.
           </motion.p>
           <motion.div variants={rise} custom={7} className="mt-9 flex flex-wrap items-center gap-3">
             <MagneticButton size="lg" onClick={() => navigate("/launch")}>

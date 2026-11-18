@@ -22,7 +22,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      // The smoke tests point the portal at their own API (playwright.config.ts).
+      "/api": { target: process.env.LAUNCHBAY_API ?? "http://127.0.0.1:8000", changeOrigin: true },
     },
   },
 });

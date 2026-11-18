@@ -91,7 +91,7 @@ export function AppShell() {
               </div>
             </div>
           </div>
-          <p className="px-2 text-[11px] text-faint">Launchbay v0.4 · Phase 4</p>
+          <p className="px-2 text-[11px] text-faint">Launchbay v1.0</p>
         </div>
       </aside>
 

@@ -389,7 +389,7 @@ export function ServiceView() {
 
       {launch?.status === "failed" && !retired && <ExplainPanel key={`explain-${launch.id}`} name={name!} stored={launch.explanation ?? null} />}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.2fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.2fr)]">
         <div className="panel p-5">
           {steps.map((step, i) => (
             <StepNode

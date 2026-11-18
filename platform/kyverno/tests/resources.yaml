@@ -8,7 +8,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -21,7 +21,7 @@ spec:
   containers:
     - name: app
       image: nginx:1.27
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -34,7 +34,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:latest
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -47,7 +47,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -60,7 +60,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments@sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -73,7 +73,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -86,7 +86,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
-      securityContext: { privileged: true, allowPrivilegeEscalation: true, capabilities: { drop: [ALL] } }
+      securityContext: { privileged: true, allowPrivilegeEscalation: true, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -99,7 +99,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
-      securityContext: { allowPrivilegeEscalation: false }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -113,7 +113,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -126,7 +126,7 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
-      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi } }
       readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
       livenessProbe: { httpGet: { path: /healthz, port: 8000 } }
@@ -139,6 +139,18 @@ spec:
   containers:
     - name: app
       image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+      resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: writable-root, namespace: payments }
+spec:
+  securityContext: { runAsNonRoot: true, runAsUser: 10001 }
+  containers:
+    - name: app
+      image: ghcr.io/launchbay-labs/payments:1b2c3d4e5f60718293a4b5c6d7e8f90112233445
       securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
       resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 64Mi } }
-
+      readinessProbe: { httpGet: { path: /healthz, port: 8000 } }
+      livenessProbe: { httpGet: { path: /healthz, port: 8000 } }

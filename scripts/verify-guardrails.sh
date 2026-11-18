@@ -37,7 +37,7 @@ EOF
 }
 
 GOOD_POD='{ runAsNonRoot: true, runAsUser: 10001 }'
-GOOD_CONTAINER='{ allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }'
+GOOD_CONTAINER='{ allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }'
 GOOD_PROBES='          readinessProbe: { httpGet: { path: /healthz, port: 8080 } }
           livenessProbe: { httpGet: { path: /healthz, port: 8080 } }'
 
@@ -68,6 +68,8 @@ expect deny "pod without runAsNonRoot" \
   "$(deployment "$SIGNED" '{}' "$GOOD_CONTAINER" "$GOOD_PROBES")"
 expect deny "privileged container" \
   "$(deployment "$SIGNED" "$GOOD_POD" '{ privileged: true, allowPrivilegeEscalation: true }' "$GOOD_PROBES")"
+expect deny "writable root filesystem" \
+  "$(deployment "$SIGNED" "$GOOD_POD" '{ allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }' "$GOOD_PROBES")"
 expect deny "container without health probes" \
   "$(deployment "$SIGNED" "$GOOD_POD" "$GOOD_CONTAINER" "")"
 

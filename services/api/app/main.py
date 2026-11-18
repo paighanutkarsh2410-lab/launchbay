@@ -75,7 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await app.state.launcher.shutdown()
         await db.dispose()
 
-    app = FastAPI(title="Launchbay API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Launchbay API", version="1.0.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
