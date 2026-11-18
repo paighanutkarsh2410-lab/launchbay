@@ -16,7 +16,7 @@ pipeline, and lets Argo CD put it live.
 ![Argo CD](https://img.shields.io/badge/GitOps-Argo%20CD-ef7b4d)
 ![Terraform](https://img.shields.io/badge/cloud-Terraform-7b42bc)
 ![cosign](https://img.shields.io/badge/images-signed%20with%20cosign-2e7d32)
-![Claude](https://img.shields.io/badge/failures%20explained%20by-Claude-d97757)
+![AI](https://img.shields.io/badge/failures%20explained%20by-Gemini%20%7C%20Claude%20%7C%20rules-7c5cff)
 
 </div>
 
@@ -72,10 +72,12 @@ happen: logs scroll in, the timeline fills, and the rocket flies.
   a check that can't be evaluated is skipped, never counted against the service.
 - **Failed launches, explained.** One click on a failed launch pulls the evidence together (the
   stage log, the failed GitHub Actions job's log, Argo CD's status, the guardrails) and returns what
-  went wrong, why, and the steps to fix it. With an Anthropic API key it asks Claude (Opus 5.5, with
-  structured output and server-side refusal fallback); without one, built-in rules recognise the
+  went wrong, why, and the steps to fix it. The model is pluggable: Gemini (the free tier is plenty)
+  or Claude, each returning a schema-checked answer; with no key at all, built-in rules recognise the
   common failures (failing tests, a vulnerability, a guardrail denial, a Terraform error, a timeout).
-  Explanations are stored with the launch, so each failure is explained once.
+  Whatever the model can't answer (a rate limit, an outage, a refusal) falls back to the rules, and
+  the panel says which one answered. Explanations are stored with the launch, so each failure is
+  explained once.
 - **Provider architecture.** The launcher talks to the world only through providers. `GitHubProvider`
   does it for real; `DemoProvider` simulates every stage so the portal runs with no credentials.
 - **GitHub App, not tokens.** Scoped permissions and short-lived installation tokens.
@@ -101,8 +103,15 @@ npm install
 npm run dev
 ```
 
-To have Claude explain failed launches, save an Anthropic API key as `~/.launchbay/anthropic-api-key`
-(or set `LAUNCHBAY_ANTHROPIC_API_KEY`). Without it, Launchbay explains failures with built-in rules.
+Failed launches are explained by built-in rules out of the box. To use a model instead, save a key
+outside the repo; Launchbay picks it up on start:
+
+- **Gemini** (free): create a key at [Google AI Studio](https://aistudio.google.com) and save it as
+  `~/.launchbay/gemini-api-key` (or set `LAUNCHBAY_GEMINI_API_KEY`).
+- **Claude**: save an Anthropic API key as `~/.launchbay/anthropic-api-key` (or set
+  `LAUNCHBAY_ANTHROPIC_API_KEY`).
+
+With both present Claude is used; set `LAUNCHBAY_EXPLAINER=gemini` (or `claude`, `rules`) to choose.
 
 Open http://localhost:5173 and launch a service. Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> for
 the command palette.
@@ -174,5 +183,5 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 - [x] Retry from the failed stage and decommission (archive or delete) from the portal
 - [x] **Phase 2**: Kyverno guardrails (CEL policies), signed-image enforcement, policy tests in CI
 - [x] **Phase 3**: cloud resources (S3, SQS, DynamoDB) with Terraform, on a local AWS emulator
-- [x] **Phase 4**: service scorecards and an AI helper (Claude) that explains failed launches
+- [x] **Phase 4**: service scorecards and an AI helper (Gemini or Claude) that explains failed launches
 - [ ] **Phase 5**: polish, screenshots and a demo video

@@ -97,10 +97,19 @@ a grade. Results are cached for five minutes; "Re-check" forces a fresh run.
   unhealthy resources,
 - the guardrails, from the same policy files Kyverno enforces.
 
-With a key, it sends them to Claude (`claude-opus-5-5`, effort `medium`) with a JSON schema as
-structured output and the server-side refusal fallback. If Claude is unreachable, declines, or
-returns something incomplete, the rule-based explainer answers instead and says so. The answer is
-stored on the launch, so viewing it again costs nothing.
+With a key, it sends them to a model with the `Explanation` JSON schema as structured output.
+`build_explainer` picks the model from the keys present (or `LAUNCHBAY_EXPLAINER`):
+
+- **Gemini** (`google-genai`): `gemini-3.8-flash`, with `response_json_schema`. The free tier often
+  answers "high demand" (503), so an overloaded request goes once more to `gemini-3.5-flash-lite`
+  before giving up; SDK retries are capped so a busy API never stalls the request for minutes.
+- **Claude** (`anthropic`): `claude-opus-5-5`, effort `medium`, with the server-side refusal
+  fallback.
+
+If the model is unreachable, rate limited, declines, or returns something that doesn't validate,
+the rule-based explainer answers instead and says why. The answer is stored on the launch, so
+viewing it again costs nothing. Tests never call a model: the test settings force the rules, and
+the model paths run against fake clients.
 
 Moto replaced LocalStack in the plan: LocalStack's image now needs an account and auth token, while
 Moto is Apache-2.0 and runs anywhere with no sign-up.
@@ -116,5 +125,5 @@ used for short, torn-down demos.
 1. Core loop: portal, launches, repo + CI, GitOps, Argo CD on kind
 2. Guardrails: Kyverno CEL policies (signed images, trusted registry, pod security, probes and resources)
 3. Cloud resources: Terraform modules (S3, SQS, DynamoDB) on the Moto emulator, AWS-ready
-4. Scorecards and AI helper: eleven-check scorecards, failures explained by Claude or rules
+4. Scorecards and AI helper: eleven-check scorecards, failures explained by Gemini, Claude or rules
 5. Polish: docs, screenshots, demo

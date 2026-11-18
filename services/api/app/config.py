@@ -46,20 +46,34 @@ class Settings(BaseSettings):
     cloud_endpoint: str = "http://aws.localtest.me"
     cloud_service_endpoint: str = "http://moto.launchbay-cloud.svc.cluster.local:5000"
 
-    # Failure explanations: Claude when a key is available, built-in rules otherwise.
-    # The key comes from LAUNCHBAY_ANTHROPIC_API_KEY or this file (kept outside the repo).
+    # Failure explanations. "auto" uses Claude if an Anthropic key is available, then Gemini if a
+    # Gemini key is, then built-in rules. Keys come from the environment
+    # (LAUNCHBAY_ANTHROPIC_API_KEY, LAUNCHBAY_GEMINI_API_KEY) or these files, kept outside the repo.
+    explainer: Literal["auto", "claude", "gemini", "rules"] = "auto"
     anthropic_api_key: SecretStr | None = None
     anthropic_api_key_file: Path = Path.home() / ".launchbay" / "anthropic-api-key"
-    explainer_model: str = "claude-opus-5-5"
+    claude_model: str = "claude-opus-5-5"
+    gemini_api_key: SecretStr | None = None
+    gemini_api_key_file: Path = Path.home() / ".launchbay" / "gemini-api-key"
+    gemini_model: str = "gemini-3.8-flash"
+    # Tried when the main model is overloaded, which happens often on the free tier.
+    gemini_overflow_model: str | None = "gemini-3.5-flash-lite"
     # How long scorecards are reused before their checks run again.
     scorecard_ttl_seconds: int = 300
 
     def anthropic_key(self) -> str | None:
-        if self.anthropic_api_key:
-            return self.anthropic_api_key.get_secret_value()
-        if self.anthropic_api_key_file.is_file():
-            return self.anthropic_api_key_file.read_text(encoding="utf-8").strip() or None
-        return None
+        return _key(self.anthropic_api_key, self.anthropic_api_key_file)
+
+    def gemini_key(self) -> str | None:
+        return _key(self.gemini_api_key, self.gemini_api_key_file)
+
+
+def _key(value: SecretStr | None, file: Path) -> str | None:
+    if value:
+        return value.get_secret_value()
+    if file.is_file():
+        return file.read_text(encoding="utf-8").strip() or None
+    return None
 
 
 @lru_cache

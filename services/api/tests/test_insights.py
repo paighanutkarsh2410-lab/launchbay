@@ -7,9 +7,16 @@ import anthropic
 import httpx2
 import pytest
 from fastapi import FastAPI
+from google.genai import errors as genai_errors
 from httpx import AsyncClient
 
-from app.explainer import ClaudeExplainer, Explainer, Failure, RuleExplainer
+from app.explainer import (
+    ClaudeExplainer,
+    Failure,
+    GeminiExplainer,
+    RuleExplainer,
+    build_explainer,
+)
 from app.providers.base import RepoFacts, StepError
 from app.providers.demo import DemoProvider
 from app.scorecard import CHECKS, evaluate, grade_for, score
@@ -239,6 +246,81 @@ async def test_falls_back_to_rules(result) -> None:
     assert "gave up waiting" in out.summary
 
 
-def test_without_a_key_only_rules_run() -> None:
-    assert Explainer(None, "claude-opus-5-5").claude is None
-    assert Explainer("k", "claude-opus-5-5").label == "Claude (claude-opus-5-5)"
+def test_the_explainer_follows_the_configured_keys() -> None:
+    def build(choice="auto", claude=None, gemini=None):
+        return build_explainer(choice, claude, "claude-opus-5-5", gemini, "gemini-3.8-flash")
+
+    assert build().source == "rules" and build().label == "Built-in rules"
+    assert build(claude="a", gemini="g").label == "Claude (claude-opus-5-5)"
+    assert build(gemini="g").label == "Gemini (gemini-3.8-flash)"
+    assert build("gemini", claude="a", gemini="g").source == "gemini"
+    assert build("rules", claude="a", gemini="g").source == "rules"
+    assert build("claude", gemini="g").source == "rules"  # asked for Claude, but no key
+
+
+def fake_gemini(*results):
+    """A GeminiExplainer whose calls return (or raise) each of `results` in turn."""
+    explainer = GeminiExplainer("test-key", "gemini-3.8-flash", RuleExplainer(), "gemini-lite")
+    calls = []
+
+    async def generate_content(**kwargs):
+        calls.append(kwargs)
+        result = results[len(calls) - 1]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    explainer.client = SimpleNamespace(
+        aio=SimpleNamespace(models=SimpleNamespace(generate_content=generate_content))
+    )
+    return explainer, calls
+
+
+def gemini_response(text: str | None, finish: str = "STOP"):
+    return SimpleNamespace(
+        text=text,
+        model_version="gemini-3.8-flash",
+        candidates=[SimpleNamespace(finish_reason=finish)],
+    )
+
+
+def gemini_error(code: int):
+    cls = genai_errors.ServerError if code >= 500 else genai_errors.ClientError
+    return cls(code, {"error": {"code": code, "message": "nope", "status": "X"}})
+
+
+async def test_gemini_answer_is_used_and_the_request_is_well_formed() -> None:
+    explainer, calls = fake_gemini(gemini_response(GOOD))
+    out = await explainer.explain(failure(stage="pipeline", logs=["1 failed"]))
+    assert out.source == "gemini" and out.model == "gemini-3.8-flash"
+    assert out.fix == ["Fix it", "Retry"]
+    sent = calls[0]
+    assert sent["model"] == "gemini-3.8-flash"
+    assert sent["config"].response_mime_type == "application/json"
+    assert sent["config"].response_json_schema["additionalProperties"] is False
+    assert "<failed_stage>pipeline" in sent["contents"]
+
+
+async def test_gemini_overflows_to_the_lighter_model_when_busy() -> None:
+    explainer, calls = fake_gemini(gemini_error(503), gemini_response(GOOD))
+    out = await explainer.explain(failure())
+    assert out.source == "gemini"
+    assert [c["model"] for c in calls] == ["gemini-3.8-flash", "gemini-lite"]
+
+
+@pytest.mark.parametrize(
+    ("results", "note"),
+    [
+        ((gemini_error(429),), "free-tier limit"),
+        ((gemini_error(400),), "check the API key"),
+        ((gemini_error(503), gemini_error(503)), "could not be reached"),
+        ((gemini_response(None, finish="SAFETY"),), "declined"),
+        ((gemini_response('{"summary": "cut off'),), "incomplete"),
+    ],
+    ids=["rate-limited", "bad-key", "overloaded", "blocked", "truncated"],
+)
+async def test_gemini_falls_back_to_rules(results, note) -> None:
+    explainer, _ = fake_gemini(*results)
+    out = await explainer.explain(failure(error="Timed out waiting for Argo CD"))
+    assert out.source == "rules" and note in out.note
+    assert "gave up waiting" in out.summary

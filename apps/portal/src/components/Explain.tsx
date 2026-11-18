@@ -65,7 +65,8 @@ function Reveal({ text, className, delay = 0 }: { text: string; className?: stri
 const confidenceColor = { high: "text-mint", medium: "text-amber", low: "text-faint" };
 
 function Answer({ explanation, onRefresh, refreshing }: { explanation: Explanation; onRefresh: () => void; refreshing: boolean }) {
-  const fromClaude = explanation.source === "claude";
+  const fromModel = explanation.source !== "rules";
+  const modelName = explanation.source === "claude" ? "Claude" : "Gemini";
   const words = explanation.summary.split(" ").length;
   const afterSummary = 0.2 + words * 0.025;
   return (
@@ -74,11 +75,11 @@ function Answer({ explanation, onRefresh, refreshing }: { explanation: Explanati
         <span
           className={clsx(
             "flex items-center gap-1.5 rounded-full px-2.5 py-1",
-            fromClaude ? "bg-violet/15 text-violet-soft" : "bg-white/[0.06] text-muted",
+            fromModel ? "bg-violet/15 text-violet-soft" : "bg-white/[0.06] text-muted",
           )}
         >
-          {fromClaude ? <Sparkles size={12} /> : <BookOpen size={12} />}
-          {fromClaude ? `Explained by Claude${explanation.model ? ` · ${explanation.model}` : ""}` : "Built-in rules"}
+          {fromModel ? <Sparkles size={12} /> : <BookOpen size={12} />}
+          {fromModel ? `Explained by ${modelName}${explanation.model ? ` · ${explanation.model}` : ""}` : "Built-in rules"}
         </span>
         <span className={clsx("rounded-full bg-white/[0.04] px-2.5 py-1", confidenceColor[explanation.confidence])}>
           {explanation.confidence} confidence
@@ -161,7 +162,7 @@ export function ExplainPanel({ name, stored }: { name: string; stored: Explanati
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease }}
-      className="panel relative overflow-hidden p-6"
+      className="panel relative overflow-clip p-6"
     >
       {/* A slow violet sweep behind the panel while there is something to ask. */}
       <motion.div
@@ -180,8 +181,8 @@ export function ExplainPanel({ name, stored }: { name: string; stored: Explanati
             <div>
               <p className="font-display text-lg font-semibold">Not sure what went wrong?</p>
               <p className="text-sm text-muted">
-                {assistant?.source === "claude"
-                  ? "Claude reads the stage log and the failed job's output, then tells you what to fix."
+                {assistant && assistant.source !== "rules"
+                  ? `${assistant.source === "claude" ? "Claude" : "Gemini"} reads the stage log and the failed job's output, then tells you what to fix.`
                   : "Launchbay matches the logs against the failures it knows and tells you what to fix."}
               </p>
             </div>

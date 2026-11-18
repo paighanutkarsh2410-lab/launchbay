@@ -15,6 +15,7 @@ dependencies = [
   "pyyaml==6.0.2",
   "sse-starlette==2.2.1",
   "anthropic==2.4.0",
+  "google-genai==3.5.0",
 ]
 
 [project.optional-dependencies]

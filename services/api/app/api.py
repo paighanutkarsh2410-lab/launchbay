@@ -307,7 +307,7 @@ async def list_scorecards(
 @router.get("/assistant", response_model=AssistantInfo)
 async def assistant_info(request: Request) -> AssistantInfo:
     explainer: Explainer = request.app.state.explainer
-    return AssistantInfo(source="claude" if explainer.claude else "rules", label=explainer.label)
+    return AssistantInfo(source=explainer.source, label=explainer.label)
 
 
 @router.post("/services/{name}/explain", response_model=ExplanationOut)

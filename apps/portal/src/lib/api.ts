@@ -133,14 +133,14 @@ export interface Explanation {
   fix: string[];
   evidence: string[];
   confidence: "high" | "medium" | "low";
-  source: "claude" | "rules";
+  source: "claude" | "gemini" | "rules";
   model: string | null;
   stage: string;
   note: string | null;
 }
 
 export interface AssistantInfo {
-  source: "claude" | "rules";
+  source: "claude" | "gemini" | "rules";
   label: string;
 }
 

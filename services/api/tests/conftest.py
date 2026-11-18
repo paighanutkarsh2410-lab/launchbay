@@ -16,6 +16,7 @@ async def app(tmp_path) -> AsyncIterator[FastAPI]:
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
         provider="demo",
         demo_speed=0,  # no waiting in tests
+        explainer="rules",  # never call a real model, even if a key file is on this machine
     )
     application = create_app(settings)
     async with LifespanManager(application):

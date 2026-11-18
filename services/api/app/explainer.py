@@ -2,8 +2,9 @@
 
 `RuleExplainer` recognises the failures Launchbay knows well (a guardrail denial, a failing test
 or vulnerability scan, a Terraform error, a timeout) with no network and no cost.
-`ClaudeExplainer` sends the same evidence, including the failed CI job's log, to Claude and gets
-a structured answer back; if Claude is unavailable or declines, the rules answer instead.
+`ClaudeExplainer` and `GeminiExplainer` send the same evidence, including the failed CI job's log,
+to a model and get a structured answer back; if the model is unavailable or declines, the rules
+answer instead. Which one runs depends on the keys configured (see `build_explainer`).
 """
 
 import logging
@@ -12,6 +13,9 @@ from dataclasses import dataclass
 from typing import Literal
 
 import anthropic
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types as genai_types
 from pydantic import BaseModel, Field, ValidationError
 
 log = logging.getLogger(__name__)
@@ -28,10 +32,10 @@ class Explanation(BaseModel):
 
 
 class ExplanationOut(Explanation):
-    source: Literal["claude", "rules"]
+    source: Literal["claude", "gemini", "rules"]
     model: str | None = None
     stage: str
-    note: str | None = None  # e.g. why Claude was not used
+    note: str | None = None  # e.g. why the model was not used
 
 
 @dataclass
@@ -168,38 +172,77 @@ thin, say so and lower your confidence. Keep fix steps concrete and short, and e
 retrying would help. Copy evidence lines exactly as they appear."""
 
 
-class ClaudeExplainer:
-    def __init__(self, api_key: str, model: str, fallback: RuleExplainer) -> None:
-        self.client = anthropic.AsyncAnthropic(api_key=api_key, max_retries=2, timeout=120)
+def _prompt(f: Failure) -> str:
+    logs = "\n".join(f.logs[-MAX_LOG_LINES:])
+    context = f.context or "(none)"
+    guardrails = "\n".join(f"- {g}" for g in f.guardrails) or "(none)"
+    return (
+        f"<service>{f.service}</service>\n<template>{f.template}</template>\n"
+        f"<failed_stage>{f.stage} ({f.stage_title})</failed_stage>\n"
+        f"<error>{f.error}</error>\n"
+        f"<stage_log>\n{logs}\n</stage_log>\n"
+        f"<extra_evidence>\n{context}\n</extra_evidence>\n"
+        f"<guardrails>\n{guardrails}\n</guardrails>\n\n"
+        "Explain why this launch failed and how to fix it."
+    )
+
+
+def _schema() -> dict:
+    schema = Explanation.model_json_schema()
+    schema["additionalProperties"] = False
+    return schema
+
+
+class ModelExplainer:
+    """Shared by the model-backed explainers: the rules answer whenever the model can't."""
+
+    source: Literal["claude", "gemini"]
+    name: str
+
+    def __init__(self, model: str, fallback: RuleExplainer) -> None:
         self.model = model
         self.fallback = fallback
 
-    def _prompt(self, f: Failure) -> str:
-        logs = "\n".join(f.logs[-MAX_LOG_LINES:])
-        context = f.context or "(none)"
-        guardrails = "\n".join(f"- {g}" for g in f.guardrails) or "(none)"
-        return (
-            f"<service>{f.service}</service>\n<template>{f.template}</template>\n"
-            f"<failed_stage>{f.stage} ({f.stage_title})</failed_stage>\n"
-            f"<error>{f.error}</error>\n"
-            f"<stage_log>\n{logs}\n</stage_log>\n"
-            f"<extra_evidence>\n{context}\n</extra_evidence>\n"
-            f"<guardrails>\n{guardrails}\n</guardrails>\n\n"
-            "Explain why this launch failed and how to fix it."
+    @property
+    def label(self) -> str:
+        return f"{self.name} ({self.model})"
+
+    def rules(self, f: Failure, note: str) -> ExplanationOut:
+        return ExplanationOut(
+            **self.fallback.explain(f).model_dump(), source="rules", stage=f.stage, note=note
+        )
+
+    def answer(self, f: Failure, text: str, model: str | None) -> ExplanationOut:
+        try:
+            explanation = Explanation.model_validate_json(text)
+        except ValidationError:
+            log.warning("%s returned an unexpected shape", self.name)
+            return self.rules(
+                f, f"{self.name}'s answer was incomplete; explained with built-in rules instead."
+            )
+        return ExplanationOut(
+            **explanation.model_dump(), source=self.source, model=model or self.model, stage=f.stage
         )
 
     async def explain(self, f: Failure) -> ExplanationOut:
-        def rules(note: str) -> ExplanationOut:
-            return ExplanationOut(
-                **self.fallback.explain(f).model_dump(), source="rules", stage=f.stage, note=note
-            )
+        raise NotImplementedError
 
+
+class ClaudeExplainer(ModelExplainer):
+    source = "claude"
+    name = "Claude"
+
+    def __init__(self, api_key: str, model: str, fallback: RuleExplainer) -> None:
+        super().__init__(model, fallback)
+        self.client = anthropic.AsyncAnthropic(api_key=api_key, max_retries=2, timeout=120)
+
+    async def explain(self, f: Failure) -> ExplanationOut:
         try:
             response = await self.client.beta.messages.create(
                 model=self.model,
                 max_tokens=16000,
                 system=SYSTEM,
-                messages=[{"role": "user", "content": self._prompt(f)}],
+                messages=[{"role": "user", "content": _prompt(f)}],
                 output_config={
                     "effort": "medium",
                     "format": {"type": "json_schema", "schema": _schema()},
@@ -209,46 +252,129 @@ class ClaudeExplainer:
                 fallbacks="default",
             )
         except anthropic.AuthenticationError:
-            return rules("Claude rejected the API key; explained with built-in rules instead.")
+            return self.rules(
+                f, "Claude rejected the API key; explained with built-in rules instead."
+            )
         except anthropic.RateLimitError:
-            return rules("Claude is rate limited right now; explained with built-in rules.")
+            return self.rules(f, "Claude is rate limited right now; explained with built-in rules.")
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as error:
             log.warning("Claude explanation failed: %s", error)
-            return rules("Claude could not be reached; explained with built-in rules instead.")
+            return self.rules(
+                f, "Claude could not be reached; explained with built-in rules instead."
+            )
 
         if response.stop_reason == "refusal":
-            return rules("Claude declined this one; explained with built-in rules instead.")
+            return self.rules(f, "Claude declined this one; explained with built-in rules instead.")
         text = next((b.text for b in response.content if b.type == "text"), "")
-        try:
-            explanation = Explanation.model_validate_json(text)
-        except ValidationError:
-            log.warning("Claude returned an unexpected shape (stop: %s)", response.stop_reason)
-            return rules("Claude's answer was incomplete; explained with built-in rules instead.")
-        return ExplanationOut(
-            **explanation.model_dump(), source="claude", model=response.model, stage=f.stage
+        return self.answer(f, text, response.model)
+
+
+class GeminiExplainer(ModelExplainer):
+    """Google's Gemini API; its free tier is enough for occasional explanations.
+
+    Free-tier capacity comes and goes ("high demand" 503s), so when the main model is overloaded
+    the same request goes to a lighter one before the rules take over.
+    """
+
+    source = "gemini"
+    name = "Gemini"
+
+    def __init__(
+        self, api_key: str, model: str, fallback: RuleExplainer, overflow_model: str | None = None
+    ) -> None:
+        super().__init__(model, fallback)
+        self.overflow_model = overflow_model
+        self.client = genai.Client(
+            api_key=api_key,
+            http_options=genai_types.HttpOptions(
+                timeout=60_000, retry_options=genai_types.HttpRetryOptions(attempts=2)
+            ),
         )
 
+    async def _generate(self, f: Failure):
+        config = genai_types.GenerateContentConfig(
+            system_instruction=SYSTEM,
+            response_mime_type="application/json",
+            response_json_schema=_schema(),
+        )
+        models = [self.model, *([self.overflow_model] if self.overflow_model else [])]
+        for i, model in enumerate(models):
+            try:
+                return await self.client.aio.models.generate_content(
+                    model=model, contents=_prompt(f), config=config
+                )
+            except genai_errors.ServerError as error:
+                if i == len(models) - 1:
+                    raise
+                log.info(
+                    "Gemini %s is unavailable (%s); trying %s", model, error.code, models[i + 1]
+                )
+        raise AssertionError("unreachable")
 
-def _schema() -> dict:
-    schema = Explanation.model_json_schema()
-    schema["additionalProperties"] = False
-    return schema
+    async def explain(self, f: Failure) -> ExplanationOut:
+        try:
+            response = await self._generate(f)
+        except genai_errors.ClientError as error:
+            if error.code == 429:
+                return self.rules(
+                    f, "Gemini's free-tier limit was reached; explained with built-in rules."
+                )
+            log.warning("Gemini rejected the request: %s", error)
+            return self.rules(
+                f, "Gemini rejected the request (check the API key); explained with built-in rules."
+            )
+        except Exception as error:  # noqa: BLE001 - server and network errors alike fall back
+            log.warning("Gemini explanation failed: %s", error)
+            return self.rules(
+                f, "Gemini could not be reached; explained with built-in rules instead."
+            )
+
+        candidate = (response.candidates or [None])[0]
+        reason = str(getattr(candidate, "finish_reason", "") or "")
+        if any(word in reason for word in ("SAFETY", "BLOCKLIST", "PROHIBITED")):
+            return self.rules(f, "Gemini declined this one; explained with built-in rules instead.")
+        return self.answer(f, response.text or "", response.model_version)
 
 
 class Explainer:
-    """Claude when a key is configured, built-in rules otherwise."""
+    """A model when one is configured, built-in rules otherwise."""
 
-    def __init__(self, api_key: str | None, model: str) -> None:
+    def __init__(self, model: ModelExplainer | None = None) -> None:
         self.rules = RuleExplainer()
-        self.claude = ClaudeExplainer(api_key, model, self.rules) if api_key else None
+        self.model = model
+        if model:
+            model.fallback = self.rules
+
+    @property
+    def source(self) -> Literal["claude", "gemini", "rules"]:
+        return self.model.source if self.model else "rules"
 
     @property
     def label(self) -> str:
-        return f"Claude ({self.claude.model})" if self.claude else "Built-in rules"
+        return self.model.label if self.model else "Built-in rules"
 
     async def explain(self, failure: Failure) -> ExplanationOut:
-        if self.claude:
-            return await self.claude.explain(failure)
+        if self.model:
+            return await self.model.explain(failure)
         return ExplanationOut(
             **self.rules.explain(failure).model_dump(), source="rules", stage=failure.stage
         )
+
+
+def build_explainer(
+    choice: str,
+    anthropic_key: str | None,
+    claude_model: str,
+    gemini_key: str | None,
+    gemini_model: str,
+    gemini_overflow_model: str | None = None,
+) -> Explainer:
+    """`choice` is auto, claude, gemini or rules. Auto picks Claude, then Gemini, by key."""
+    rules = RuleExplainer()
+    if choice in ("auto", "claude") and anthropic_key:
+        return Explainer(ClaudeExplainer(anthropic_key, claude_model, rules))
+    if choice in ("auto", "gemini") and gemini_key:
+        return Explainer(GeminiExplainer(gemini_key, gemini_model, rules, gemini_overflow_model))
+    if choice not in ("auto", "rules"):
+        log.warning("LAUNCHBAY_EXPLAINER=%s but no key for it; using built-in rules", choice)
+    return Explainer()

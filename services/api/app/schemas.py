@@ -178,7 +178,7 @@ class ScoreSummary(BaseModel):
 
 
 class AssistantInfo(BaseModel):
-    source: Literal["claude", "rules"]
+    source: Literal["claude", "gemini", "rules"]
     label: str
 
 
