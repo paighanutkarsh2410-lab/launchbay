@@ -16,6 +16,7 @@ pipeline, and lets Argo CD put it live.
 ![Argo CD](https://img.shields.io/badge/GitOps-Argo%20CD-ef7b4d)
 ![Terraform](https://img.shields.io/badge/cloud-Terraform-7b42bc)
 ![cosign](https://img.shields.io/badge/images-signed%20with%20cosign-2e7d32)
+![Claude](https://img.shields.io/badge/failures%20explained%20by-Claude-d97757)
 
 </div>
 
@@ -64,6 +65,17 @@ happen: logs scroll in, the timeline fills, and the rocket flies.
   open-source AWS emulator, inside the cluster; the same Terraform targets real AWS by leaving out
   the endpoint. The modules have mocked unit tests and an apply-and-destroy integration test in CI,
   and the API re-applies them on start, so a restarted emulator is repopulated.
+- **Scorecards.** Every launched service is graded Gold, Silver, Bronze or "Needs work" on eleven
+  weighted checks across ownership, delivery, security and reliability: CI green on main, Trivy
+  scans clean, signed image admitted, Argo CD healthy, `/healthz` answering, a README, Dependabot,
+  recent commits, encrypted cloud data. Facts come live from GitHub, Argo CD and the service itself;
+  a check that can't be evaluated is skipped, never counted against the service.
+- **Failed launches, explained.** One click on a failed launch pulls the evidence together (the
+  stage log, the failed GitHub Actions job's log, Argo CD's status, the guardrails) and returns what
+  went wrong, why, and the steps to fix it. With an Anthropic API key it asks Claude (Opus 5.5, with
+  structured output and server-side refusal fallback); without one, built-in rules recognise the
+  common failures (failing tests, a vulnerability, a guardrail denial, a Terraform error, a timeout).
+  Explanations are stored with the launch, so each failure is explained once.
 - **Provider architecture.** The launcher talks to the world only through providers. `GitHubProvider`
   does it for real; `DemoProvider` simulates every stage so the portal runs with no credentials.
 - **GitHub App, not tokens.** Scoped permissions and short-lived installation tokens.
@@ -88,6 +100,9 @@ cd apps/portal
 npm install
 npm run dev
 ```
+
+To have Claude explain failed launches, save an Anthropic API key as `~/.launchbay/anthropic-api-key`
+(or set `LAUNCHBAY_ANTHROPIC_API_KEY`). Without it, Launchbay explains failures with built-in rules.
 
 Open http://localhost:5173 and launch a service. Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> for
 the command palette.
@@ -141,7 +156,7 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 | Path | What |
 |---|---|
 | `apps/portal` | React 19 + TypeScript portal |
-| `services/api` | FastAPI API, launcher and providers |
+| `services/api` | FastAPI API, launcher, providers, scorecards and the failure explainer |
 | `templates/` | Golden-path templates rendered into new repos |
 | `platform/` | kind, Traefik and Argo CD configuration, and the ApplicationSet |
 | `platform/terraform/` | Terraform modules (bucket, queue, table) and the per-service root, with tests |
@@ -159,4 +174,5 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 - [x] Retry from the failed stage and decommission (archive or delete) from the portal
 - [x] **Phase 2**: Kyverno guardrails (CEL policies), signed-image enforcement, policy tests in CI
 - [x] **Phase 3**: cloud resources (S3, SQS, DynamoDB) with Terraform, on a local AWS emulator
-- [ ] **Phase 4**: service scorecards and an AI helper that explains failed launches
+- [x] **Phase 4**: service scorecards and an AI helper (Claude) that explains failed launches
+- [ ] **Phase 5**: polish, screenshots and a demo video

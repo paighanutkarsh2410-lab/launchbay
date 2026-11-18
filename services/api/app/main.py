@@ -11,9 +11,11 @@ from app.cloud import build_cloud
 from app.config import Settings, get_settings
 from app.db import Database
 from app.events import EventBroker
+from app.explainer import Explainer
 from app.launcher import Launcher
 from app.models import Launch, Service, ServiceStatus, StepStatus
 from app.providers import build_provider
+from app.scorecard import Scorecards
 from app.templates_catalog import TemplateCatalog
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -54,6 +56,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.launcher = launcher = Launcher(
             db.sessions, build_provider(settings), catalog, events, cloud
         )
+        app.state.scorecards = Scorecards(settings.scorecard_ttl_seconds)
+        app.state.explainer = Explainer(settings.anthropic_key(), settings.explainer_model)
         reconcile = None
         if settings.cloud == "emulator":
             # In the background: startup should not wait on Terraform.

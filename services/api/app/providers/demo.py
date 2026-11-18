@@ -3,8 +3,9 @@
 import asyncio
 import hashlib
 import random
+from datetime import UTC, datetime, timedelta
 
-from app.providers.base import LaunchRequest, Provider, StepContext
+from app.providers.base import LaunchRequest, Provider, RepoFacts, StepContext
 
 
 class DemoProvider(Provider):
@@ -23,6 +24,19 @@ class DemoProvider(Provider):
 
     def _sha(self, request: LaunchRequest) -> str:
         return hashlib.sha1(request.name.encode()).hexdigest()
+
+    async def repo_facts(self, request: LaunchRequest) -> RepoFacts:
+        # Derived from the name, so a service keeps the same scorecard between views.
+        seed = int(self._sha(request)[:8], 16)
+        return RepoFacts(
+            ci_conclusion="success" if seed % 5 else "failure",
+            ci_url=f"https://github.com/launchbay-labs/{request.name}/actions",
+            scans_passed=seed % 7 != 0,
+            has_readme=True,
+            has_dependabot=seed % 3 != 0,
+            last_commit_at=datetime.now(UTC) - timedelta(days=seed % 120),
+            deploy_health="Healthy",
+        )
 
     async def create_repository(self, request: LaunchRequest, ctx: StepContext) -> str:
         files = request.template.render({"name": request.name, "description": request.description})

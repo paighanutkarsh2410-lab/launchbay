@@ -7,7 +7,9 @@ import { Link, useParams } from "react-router";
 import { Burst } from "@/components/Burst";
 import { CloudPanel } from "@/components/Cloud";
 import { DecommissionDialog } from "@/components/DecommissionDialog";
+import { ExplainPanel } from "@/components/Explain";
 import { MagneticButton } from "@/components/MagneticButton";
+import { ScorecardPanel } from "@/components/Scorecard";
 import { StatusBadge } from "@/components/StatusDot";
 import { TemplateIcon } from "@/components/TemplateIcon";
 import { api, type Step } from "@/lib/api";
@@ -385,6 +387,8 @@ export function ServiceView() {
         )}
       </AnimatePresence>
 
+      {launch?.status === "failed" && !retired && <ExplainPanel key={`explain-${launch.id}`} name={name!} stored={launch.explanation ?? null} />}
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.2fr)]">
         <div className="panel p-5">
           {steps.map((step, i) => (
@@ -403,6 +407,8 @@ export function ServiceView() {
       </div>
 
       {service && !retired && <CloudPanel service={service} provisioning={running} />}
+
+      {!retired && !running && launch && <ScorecardPanel key={`score-${launch.id}`} name={name!} />}
     </div>
   );
 }

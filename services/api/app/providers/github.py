@@ -9,13 +9,14 @@ import base64
 import re
 import time
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 
 import httpx
 import jwt
 import yaml
 
 from app.config import Settings
-from app.providers.base import LaunchRequest, Provider, StepContext, StepError
+from app.providers.base import LaunchRequest, Provider, RepoFacts, StepContext, StepError
 
 GITHUB_API = "https://api.github.com"
 PIPELINE_TIMEOUT = 20 * 60
@@ -34,6 +35,9 @@ async def poll[T](
         await asyncio.sleep(interval)
     raise StepError(f"Timed out after {int(limit)}s waiting for {what}")
 
+
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+TIMESTAMP = re.compile(r"^\d{4}-\d\d-\d\dT[\d:.]+Z ")
 
 DENIED = "denied the request: "
 
@@ -354,3 +358,130 @@ class GitHubProvider(Provider):
             await poll(up, LIVE_TIMEOUT, 3, f"{url}/healthz")
         await ctx.detail(url)
         return url
+
+    # Scorecards and failure explanations
+    def _repo(self, request: LaunchRequest, path: str = "") -> str:
+        return f"/repos/{self.owner}/{request.name}{path}"
+
+    async def _latest_run(self, request: LaunchRequest, failed: bool = False) -> dict | None:
+        runs = await self._gh_optional(
+            "GET", self._repo(request, "/actions/runs"), params={"branch": "main", "per_page": 10}
+        )
+        for run in (runs or {}).get("workflow_runs", []):
+            if not failed or run.get("conclusion") in ("failure", "cancelled", "timed_out"):
+                return run
+        return None
+
+    async def _argo_status(self, name: str) -> dict | None:
+        if not (self.settings.argocd_url and self.settings.argocd_token):
+            return None
+        async with httpx.AsyncClient(
+            base_url=self.settings.argocd_url,
+            headers={"Authorization": f"Bearer {self.settings.argocd_token}"},
+            verify=False,
+            timeout=10,
+        ) as argo:
+            response = await argo.get(f"/api/v1/applications/{name}")
+            if response.status_code != 200:
+                return None
+            return response.json().get("status", {})
+
+    async def repo_facts(self, request: LaunchRequest) -> RepoFacts:
+        facts = RepoFacts()
+        if await self._gh_optional("GET", self._repo(request)) is None:
+            return facts  # repo deleted: nothing to check
+        if run := await self._latest_run(request):
+            facts.ci_conclusion = run.get("conclusion") or run.get("status")
+            facts.ci_url = run.get("html_url")
+            jobs = await self._gh_optional(
+                "GET", self._repo(request, f"/actions/runs/{run['id']}/jobs")
+            )
+            scans = [
+                step
+                for job in (jobs or {}).get("jobs", [])
+                for step in job.get("steps", [])
+                if step.get("name", "").lower().startswith("scan")
+            ]
+            if scans and all(s.get("status") == "completed" for s in scans):
+                facts.scans_passed = all(s.get("conclusion") == "success" for s in scans)
+        facts.has_readme = (
+            await self._gh_optional("GET", self._repo(request, "/readme")) is not None
+        )
+        facts.has_dependabot = (
+            await self._gh_optional("GET", self._repo(request, "/contents/.github/dependabot.yml"))
+            is not None
+        )
+        if commit := await self._gh_optional("GET", self._repo(request, "/commits/main")):
+            date = commit.get("commit", {}).get("committer", {}).get("date")
+            if date:
+                facts.last_commit_at = datetime.fromisoformat(date.replace("Z", "+00:00"))
+        try:
+            status = await self._argo_status(request.name)
+        except httpx.HTTPError:
+            status = None
+        if status:
+            facts.deploy_health = status.get("health", {}).get("status")
+        return facts
+
+    async def failure_context(self, request: LaunchRequest, stage: str) -> str | None:
+        if stage == "pipeline":
+            return await self._failed_job_log(request)
+        if stage == "deploy":
+            try:
+                status = await self._argo_status(request.name)
+            except httpx.HTTPError:
+                return None
+            if not status:
+                return None
+            lines = [f"Argo CD sync: {status.get('sync', {}).get('status')}"]
+            lines.append(f"Argo CD health: {status.get('health', {}).get('status')}")
+            for condition in status.get("conditions") or []:
+                lines.append(f"Condition {condition.get('type')}: {condition.get('message')}")
+            operation = status.get("operationState") or {}
+            if operation.get("message"):
+                lines.append(f"Last sync: {operation['message']}")
+            for resource in status.get("resources") or []:
+                health = resource.get("health") or {}
+                if health.get("status") not in (None, "Healthy"):
+                    lines.append(
+                        f"{resource.get('kind')}/{resource.get('name')}: {health.get('status')} "
+                        f"{health.get('message') or ''}".rstrip()
+                    )
+            return "\n".join(lines)
+        return None
+
+    async def _failed_job_log(self, request: LaunchRequest) -> str | None:
+        run = await self._latest_run(request, failed=True)
+        if not run:
+            return None
+        jobs = await self._gh_optional(
+            "GET", self._repo(request, f"/actions/runs/{run['id']}/jobs")
+        )
+        failed = [j for j in (jobs or {}).get("jobs", []) if j.get("conclusion") == "failure"]
+        lines = [f"Workflow run: {run.get('html_url')} ({run.get('conclusion')})"]
+        lines.append(f"Commit: {run.get('head_sha', '')[:12]} {run.get('display_title', '')}")
+        for job in failed[:2]:
+            steps = [s["name"] for s in job.get("steps", []) if s.get("conclusion") == "failure"]
+            lines.append(f"Failed job: {job.get('name')} (failed step: {', '.join(steps) or '?'})")
+            log = await self._job_log(request, job["id"])
+            if log:
+                lines.append("--- end of the job log ---")
+                lines.extend(log)
+        return "\n".join(lines)
+
+    async def _job_log(self, request: LaunchRequest, job_id: int, tail: int = 150) -> list[str]:
+        headers = {"Authorization": f"Bearer {await self.app.token()}"}
+        # GitHub redirects to a short-lived blob URL; httpx drops the token on that hop.
+        response = await self.http.get(
+            self._repo(request, f"/actions/jobs/{job_id}/logs"),
+            headers=headers,
+            follow_redirects=True,
+        )
+        if response.status_code != 200:
+            return []
+        lines = []
+        for raw in response.text.splitlines():
+            line = TIMESTAMP.sub("", ANSI.sub("", raw)).rstrip()
+            if line and not line.startswith("##[endgroup]"):
+                lines.append(line)
+        return lines[-tail:]

@@ -44,6 +44,7 @@ export interface Launch {
   finished_at: string | null;
   error: string | null;
   steps: Step[];
+  explanation: Explanation | null;
 }
 
 export interface CloudResource {
@@ -99,6 +100,50 @@ export interface DecommissionResult {
   steps: string[];
 }
 
+export type Grade = "Gold" | "Silver" | "Bronze" | "Needs work";
+
+export interface ScoreCheck {
+  id: string;
+  title: string;
+  category: "Ownership" | "Delivery" | "Security" | "Reliability";
+  weight: number;
+  description: string;
+  remedy: string;
+  result: "pass" | "fail" | "skip";
+  detail: string;
+}
+
+export interface Scorecard {
+  service: string;
+  score: number;
+  grade: Grade;
+  checked_at: string;
+  checks: ScoreCheck[];
+}
+
+export interface ScoreSummary {
+  service: string;
+  score: number;
+  grade: Grade;
+}
+
+export interface Explanation {
+  summary: string;
+  cause: string;
+  fix: string[];
+  evidence: string[];
+  confidence: "high" | "medium" | "low";
+  source: "claude" | "rules";
+  model: string | null;
+  stage: string;
+  note: string | null;
+}
+
+export interface AssistantInfo {
+  source: "claude" | "rules";
+  label: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -131,6 +176,12 @@ export const api = {
   stats: () => request<Stats>("/stats"),
   guardrails: () => request<Guardrail[]>("/guardrails"),
   cloud: () => request<CloudInfo>("/cloud"),
+  assistant: () => request<AssistantInfo>("/assistant"),
+  scorecards: () => request<ScoreSummary[]>("/scorecards"),
+  scorecard: (name: string, fresh = false) =>
+    request<Scorecard>(`/services/${name}/scorecard${fresh ? "?fresh=true" : ""}`),
+  explain: (name: string, refresh = false) =>
+    request<Explanation>(`/services/${name}/explain${refresh ? "?refresh=true" : ""}`, { method: "POST" }),
   checkName: (name: string) =>
     request<NameCheck>(`/services/check-name?name=${encodeURIComponent(name)}`),
   retry: (name: string) => request<Service>(`/services/${name}/retry`, { method: "POST" }),

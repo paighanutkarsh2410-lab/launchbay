@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Protocol
 
 from app.templates_catalog import Template
@@ -31,8 +32,30 @@ class LaunchRequest:
     outputs: dict[str, str] = field(default_factory=dict)
 
 
+@dataclass
+class RepoFacts:
+    """What a scorecard needs to know about a service, gathered from the outside world.
+    None means "could not tell", and the check is skipped rather than failed."""
+
+    ci_conclusion: str | None = None  # latest CI run on main: success, failure, ...
+    ci_url: str | None = None
+    scans_passed: bool | None = None  # the Trivy scan steps of that run
+    has_readme: bool | None = None
+    has_dependabot: bool | None = None
+    last_commit_at: datetime | None = None
+    deploy_health: str | None = None  # Argo CD: Healthy, Degraded, Progressing, ...
+
+
 class Provider(ABC):
     """Talks to the outside world for each launch stage."""
+
+    async def repo_facts(self, request: LaunchRequest) -> RepoFacts:
+        """Facts for the service's scorecard. Providers that can't tell return nothing."""
+        return RepoFacts()
+
+    async def failure_context(self, request: LaunchRequest, stage: str) -> str | None:
+        """Extra evidence for explaining a failed stage, such as the failed CI job's log."""
+        return None
 
     @abstractmethod
     async def create_repository(self, request: LaunchRequest, ctx: StepContext) -> str:

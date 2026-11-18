@@ -74,6 +74,7 @@ class LaunchOut(BaseModel):
     finished_at: datetime | None
     error: str | None
     steps: list[StepOut]
+    explanation: dict | None = None
 
 
 class ServiceOut(BaseModel):
@@ -149,6 +150,36 @@ class Stats(BaseModel):
     launching: int
     failed: int
     median_launch_seconds: float | None
+
+
+class CheckOut(BaseModel):
+    id: str
+    title: str
+    category: str
+    weight: int
+    description: str
+    remedy: str
+    result: Literal["pass", "fail", "skip"]
+    detail: str
+
+
+class ScorecardOut(BaseModel):
+    service: str
+    score: int
+    grade: str
+    checked_at: datetime
+    checks: list[CheckOut]
+
+
+class ScoreSummary(BaseModel):
+    service: str
+    score: int
+    grade: str
+
+
+class AssistantInfo(BaseModel):
+    source: Literal["claude", "rules"]
+    label: str
 
 
 class GuardrailOut(BaseModel):

@@ -5,12 +5,14 @@ import { Link, useNavigate } from "react-router";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GlowCard } from "@/components/GlowCard";
 import { GuardrailsSection } from "@/components/Guardrails";
+import { GradeChip, ScoreBoard } from "@/components/Scorecard";
 import { LaunchPad } from "@/components/LaunchPad";
 import { MagneticButton } from "@/components/MagneticButton";
 import { StatusBadge } from "@/components/StatusDot";
 import { TemplateIcon } from "@/components/TemplateIcon";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
+import { useScores } from "@/lib/scores";
 import { STAGES } from "@/lib/stages";
 
 const rise: Variants = {
@@ -51,6 +53,7 @@ export function Overview() {
   const { data: services = [] } = useQuery({ queryKey: ["services"], queryFn: api.services, refetchInterval: 5000 });
   const { data: templates = [] } = useQuery({ queryKey: ["templates"], queryFn: api.templates });
   const accent = Object.fromEntries(templates.map((t) => [t.id, t.accent]));
+  const scores = useScores();
 
   const cards = [
     { label: "Services", value: stats?.services ?? 0, hint: "launched through Launchbay", color: "var(--color-violet)" },
@@ -171,6 +174,8 @@ export function Overview() {
 
       <GuardrailsSection />
 
+      <ScoreBoard />
+
       {/* Recent launches */}
       <section>
         <div className="flex items-end justify-between">
@@ -211,6 +216,9 @@ export function Overview() {
                 </div>
                 <span className="ml-auto hidden items-center gap-1.5 text-xs text-faint sm:flex">
                   <Clock size={13} /> {timeAgo(service.created_at)}
+                </span>
+                <span className="hidden md:inline-flex">
+                  <GradeChip summary={scores[service.name]} />
                 </span>
                 <StatusBadge status={service.status} />
                 <ArrowRight size={16} className="text-faint transition-transform duration-300 group-hover:translate-x-1 group-hover:text-fg" />

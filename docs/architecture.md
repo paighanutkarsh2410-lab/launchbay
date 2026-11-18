@@ -78,6 +78,30 @@ the database and streamed to the portal as it happens.
   which recreates anything a restarted emulator lost and changes nothing otherwise.
 - Decommissioning runs `terraform destroy` and removes the state.
 
+## Scorecards
+
+`app/scorecard.py` defines eleven weighted checks. The provider gathers facts (`repo_facts`): the
+latest CI run on main and whether its Trivy steps passed, whether the repo has a README and
+`dependabot.yml`, the last commit date, and Argo CD's health. The API adds what it knows (owner,
+description, cloud resources, whether Kyverno admitted the signed image) and probes `/healthz`.
+Score = passed weight / evaluated weight; unknown facts are skipped, so a GitHub outage never drops
+a grade. Results are cached for five minutes; "Re-check" forces a fresh run.
+
+## Failure explanations
+
+`app/explainer.py`. When someone asks about a failed launch, the API collects:
+
+- the failed stage's log and error,
+- `failure_context` from the provider: for the pipeline, the failed GitHub Actions job and the tail
+  of its log (via the App's `actions: read` permission); for deploy, Argo CD's conditions and
+  unhealthy resources,
+- the guardrails, from the same policy files Kyverno enforces.
+
+With a key, it sends them to Claude (`claude-opus-5-5`, effort `medium`) with a JSON schema as
+structured output and the server-side refusal fallback. If Claude is unreachable, declines, or
+returns something incomplete, the rule-based explainer answers instead and says so. The answer is
+stored on the launch, so viewing it again costs nothing.
+
 Moto replaced LocalStack in the plan: LocalStack's image now needs an account and auth token, while
 Moto is Apache-2.0 and runs anywhere with no sign-up.
 
@@ -92,5 +116,5 @@ used for short, torn-down demos.
 1. Core loop: portal, launches, repo + CI, GitOps, Argo CD on kind
 2. Guardrails: Kyverno CEL policies (signed images, trusted registry, pod security, probes and resources)
 3. Cloud resources: Terraform modules (S3, SQS, DynamoDB) on the Moto emulator, AWS-ready
-4. Catalog and AI helper: scorecards, failure explanations
+4. Scorecards and AI helper: eleven-check scorecards, failures explained by Claude or rules
 5. Polish: docs, screenshots, demo

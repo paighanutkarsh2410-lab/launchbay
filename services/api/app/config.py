@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 API_ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +45,21 @@ class Settings(BaseSettings):
     # Where Terraform (on this machine) and the services (in the cluster) reach the emulator.
     cloud_endpoint: str = "http://aws.localtest.me"
     cloud_service_endpoint: str = "http://moto.launchbay-cloud.svc.cluster.local:5000"
+
+    # Failure explanations: Claude when a key is available, built-in rules otherwise.
+    # The key comes from LAUNCHBAY_ANTHROPIC_API_KEY or this file (kept outside the repo).
+    anthropic_api_key: SecretStr | None = None
+    anthropic_api_key_file: Path = Path.home() / ".launchbay" / "anthropic-api-key"
+    explainer_model: str = "claude-opus-5-5"
+    # How long scorecards are reused before their checks run again.
+    scorecard_ttl_seconds: int = 300
+
+    def anthropic_key(self) -> str | None:
+        if self.anthropic_api_key:
+            return self.anthropic_api_key.get_secret_value()
+        if self.anthropic_api_key_file.is_file():
+            return self.anthropic_api_key_file.read_text(encoding="utf-8").strip() or None
+        return None
 
 
 @lru_cache

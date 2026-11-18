@@ -5,11 +5,13 @@ import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { GlowCard } from "@/components/GlowCard";
+import { GradeChip } from "@/components/Scorecard";
 import { MagneticButton } from "@/components/MagneticButton";
 import { StatusBadge } from "@/components/StatusDot";
 import { TemplateIcon } from "@/components/TemplateIcon";
 import { api, type ServiceStatus } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
+import { useScores } from "@/lib/scores";
 
 const filters: { key: ServiceStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -38,6 +40,8 @@ export function Catalog() {
       (filter === "all" || s.status === filter) &&
       `${s.name} ${s.owner} ${s.description}`.toLowerCase().includes(query.toLowerCase()),
   );
+
+  const scores = useScores();
 
   return (
     <div>
@@ -101,7 +105,10 @@ export function Catalog() {
                   <GlowCard glow={template?.accent} className="flex h-full flex-col p-5">
                     <div className="flex items-start justify-between gap-3">
                       <TemplateIcon id={service.template_id} accent={template?.accent ?? "#7c5cff"} size={42} />
-                      <StatusBadge status={service.status} />
+                      <div className="flex flex-col items-end gap-1.5">
+                        <StatusBadge status={service.status} />
+                        <GradeChip summary={scores[service.name]} />
+                      </div>
                     </div>
                     <p className="mt-5 truncate font-mono text-[15px] text-fg">{service.name}</p>
                     <p className="mt-1 line-clamp-2 min-h-10 text-sm text-muted">{service.description || template?.description}</p>

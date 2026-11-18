@@ -86,6 +86,8 @@ class Launch(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
+    # Why it failed, once someone asks (kept so it is explained once, not on every view).
+    explanation: Mapped[dict | None] = mapped_column(JSON)
 
     service: Mapped[Service] = relationship(back_populates="launches")
     steps: Mapped[list["LaunchStep"]] = relationship(

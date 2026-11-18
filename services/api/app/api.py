@@ -1,4 +1,6 @@
+import asyncio
 import json
+import logging
 import statistics
 from collections.abc import AsyncIterator
 from typing import Annotated
@@ -10,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from sse_starlette.sse import EventSourceResponse
 
 from app.cloud import KINDS
+from app.explainer import Explainer, ExplanationOut, Failure
 from app.guardrails import load_guardrails
 from app.launcher import Launcher
 from app.models import Launch, Service, ServiceStatus, StepStatus
@@ -17,6 +20,8 @@ from app.providers.base import StepError
 from app.schemas import (
     NAME_PATTERN,
     RESERVED_NAMES,
+    AssistantInfo,
+    CheckOut,
     CloudInfo,
     CloudOut,
     DecommissionRequest,
@@ -25,12 +30,15 @@ from app.schemas import (
     LaunchOut,
     NameCheck,
     ResourceKindOut,
+    ScorecardOut,
+    ScoreSummary,
     ServiceCreate,
     ServiceDetail,
     ServiceOut,
     Stats,
     TemplateOut,
 )
+from app.scorecard import Scorecard, scorable
 from app.templates_catalog import TemplateCatalog
 
 router = APIRouter(prefix="/api")
@@ -226,3 +234,121 @@ async def stats(session: Session) -> Stats:
 @router.get("/healthz", include_in_schema=False)
 async def healthz() -> dict:
     return {"status": "ok"}
+
+
+# Scorecards
+
+
+def _scorecard_out(card: Scorecard) -> ScorecardOut:
+    return ScorecardOut(
+        service=card.service,
+        score=card.score,
+        grade=card.grade,
+        checked_at=card.checked_at,
+        checks=[
+            CheckOut(
+                id=r.check.id,
+                title=r.check.title,
+                category=r.check.category,
+                weight=r.check.weight,
+                description=r.check.description,
+                remedy=r.check.remedy,
+                result=r.result,
+                detail=r.detail,
+            )
+            for r in card.results
+        ],
+    )
+
+
+@router.get("/services/{name}/scorecard", response_model=ScorecardOut)
+async def get_scorecard(
+    name: str,
+    session: Session,
+    request: Request,
+    launcher: Annotated[Launcher, Depends(get_launcher)],
+    fresh: bool = False,
+) -> ScorecardOut:
+    service = await _load_service(session, name)
+    if not scorable(service):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Scorecards cover launched services")
+    card = await request.app.state.scorecards.get(
+        service, launcher._request(service), launcher.provider, fresh=fresh
+    )
+    return _scorecard_out(card)
+
+
+@router.get("/scorecards", response_model=list[ScoreSummary])
+async def list_scorecards(
+    session: Session, request: Request, launcher: Annotated[Launcher, Depends(get_launcher)]
+) -> list[ScoreSummary]:
+    services = [
+        s
+        for s in await session.scalars(
+            select(Service).options(selectinload(Service.launches).selectinload(Launch.steps))
+        )
+        if scorable(s)
+    ]
+    scorecards = request.app.state.scorecards
+    cards = await asyncio.gather(
+        *(scorecards.get(s, launcher._request(s), launcher.provider) for s in services),
+        return_exceptions=True,
+    )
+    return [
+        ScoreSummary(service=card.service, score=card.score, grade=card.grade)
+        for card in cards
+        if isinstance(card, Scorecard)
+    ]
+
+
+# Failure explanations
+
+
+@router.get("/assistant", response_model=AssistantInfo)
+async def assistant_info(request: Request) -> AssistantInfo:
+    explainer: Explainer = request.app.state.explainer
+    return AssistantInfo(source="claude" if explainer.claude else "rules", label=explainer.label)
+
+
+@router.post("/services/{name}/explain", response_model=ExplanationOut)
+async def explain_failure(
+    name: str,
+    session: Session,
+    request: Request,
+    launcher: Annotated[Launcher, Depends(get_launcher)],
+    refresh: bool = False,
+) -> ExplanationOut:
+    """Explains the service's most recent failed launch. The answer is stored with the launch,
+    so asking again is free unless refresh is set."""
+    service = await _load_service(session, name)
+    launch = next((x for x in service.launches if x.status == StepStatus.FAILED), None)
+    step = launch and next((s for s in launch.steps if s.status == StepStatus.FAILED), None)
+    if launch is None or step is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "No failed launch to explain")
+    if launch.explanation and not refresh:
+        return ExplanationOut.model_validate(launch.explanation)
+
+    launch_request = launcher._request(service)
+    try:
+        context = await launcher.provider.failure_context(launch_request, step.key)
+    except Exception as error:  # noqa: BLE001 - extra evidence is optional
+        context = None
+        logging.getLogger(__name__).warning("No failure context for %s: %s", name, error)
+    settings = request.app.state.settings
+    guardrails = [
+        f"{g.title}: {'; '.join(g.rules)}" for g in load_guardrails(settings.policies_dir)
+    ]
+    failure = Failure(
+        service=service.name,
+        template=service.template_id,
+        stage=step.key,
+        stage_title=step.title,
+        error=launch.error or "",
+        logs=list(step.logs or []),
+        context=context,
+        guardrails=guardrails,
+    )
+    explanation = await request.app.state.explainer.explain(failure)
+    launch.explanation = explanation.model_dump(mode="json")
+    await session.commit()
+    return explanation
