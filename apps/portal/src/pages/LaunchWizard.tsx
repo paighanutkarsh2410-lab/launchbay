@@ -5,11 +5,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Burst } from "@/components/Burst";
+import { ResourcePicker, resourceLook } from "@/components/Cloud";
 import { GlowCard } from "@/components/GlowCard";
 import { GuardrailChecklist } from "@/components/Guardrails";
 import { MagneticButton } from "@/components/MagneticButton";
 import { TemplateIcon } from "@/components/TemplateIcon";
-import { api, type Template } from "@/lib/api";
+import { api, type ResourceKind, type Template } from "@/lib/api";
 import { slugify } from "@/lib/format";
 
 const steps = ["Template", "Details", "Review"] as const;
@@ -142,6 +143,7 @@ export function LaunchWizard() {
   const [name, setName] = useState("");
   const [owner, setOwner] = useState("team-platform");
   const [description, setDescription] = useState("");
+  const [resources, setResources] = useState<ResourceKind[]>([]);
   const [counting, setCounting] = useState(false);
   const [countdownDone, setCountdownDone] = useState(false);
 
@@ -173,7 +175,7 @@ export function LaunchWizard() {
     if (!template) return;
     setCounting(true);
     create.mutate(
-      { name, template_id: template.id, owner: owner.trim(), description: description.trim() },
+      { name, template_id: template.id, owner: owner.trim(), description: description.trim(), resources },
       { onError: () => setCounting(false) },
     );
   }
@@ -183,6 +185,10 @@ export function LaunchWizard() {
     { label: "Namespace", value: name || "your-service" },
     { label: "Image", value: `ghcr.io/launchbay-labs/${name || "your-service"}` },
     { label: "URL", value: `http://${name || "your-service"}.localtest.me` },
+    {
+      label: "Cloud",
+      value: resources.length ? resources.map((r) => resourceLook[r].title).join(" · ") : "None",
+    },
   ];
 
   return (
@@ -338,6 +344,9 @@ export function LaunchWizard() {
                     ))}
                   </dl>
                 </div>
+                <div className="lg:col-span-2">
+                  <ResourcePicker value={resources} onChange={setResources} />
+                </div>
               </div>
             )}
 
@@ -367,6 +376,28 @@ export function LaunchWizard() {
                         </div>
                       ))}
                     </div>
+                    {resources.length > 0 && (
+                      <div className="mt-3 rounded-xl border border-white/[0.06] bg-ink-900/60 px-4 py-3">
+                        <p className="text-[11px] uppercase tracking-widest text-faint">Cloud resources</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {resources.map((r, i) => {
+                            const { icon: Icon, color, title } = resourceLook[r];
+                            return (
+                              <motion.span
+                                key={r}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.15 + i * 0.07 }}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm"
+                                style={{ background: `color-mix(in oklab, ${color} 14%, transparent)`, color }}
+                              >
+                                <Icon size={14} /> {title}
+                              </motion.span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <GuardrailChecklist />
                     {create.isError && (
                       <p className="mt-6 flex items-center gap-2 rounded-xl border border-rose/20 bg-rose/10 px-4 py-3 text-sm text-rose">

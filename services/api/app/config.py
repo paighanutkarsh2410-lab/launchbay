@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     argocd_token: str | None = None
     service_domain: str = "localtest.me"
 
+    # Cloud resources: "simulated" fakes them; "emulator" runs Terraform against Moto.
+    cloud: Literal["simulated", "emulator"] = "simulated"
+    terraform_bin: str = "terraform"
+    terraform_dir: Path = REPO_ROOT / "platform" / "terraform" / "service"
+    # Per-service Terraform state, kept outside the repo.
+    cloud_state_dir: Path = Path.home() / ".launchbay" / "cloud"
+    # Where Terraform (on this machine) and the services (in the cluster) reach the emulator.
+    cloud_endpoint: str = "http://aws.localtest.me"
+    cloud_service_endpoint: str = "http://moto.launchbay-cloud.svc.cluster.local:5000"
+
 
 @lru_cache
 def get_settings() -> Settings:

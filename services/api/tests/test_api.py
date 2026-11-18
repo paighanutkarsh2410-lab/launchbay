@@ -21,7 +21,7 @@ async def test_lists_every_template(client: AsyncClient) -> None:
     assert all(t["port"] > 0 and t["accent"].startswith("#") for t in templates)
 
 
-async def test_launch_runs_all_six_stages(app: FastAPI, client: AsyncClient) -> None:
+async def test_launch_runs_all_seven_stages(app: FastAPI, client: AsyncClient) -> None:
     created = await client.post("/api/services", json=NEW_SERVICE)
     assert created.status_code == 201
     assert created.json()["status"] == "launching"
@@ -36,6 +36,7 @@ async def test_launch_runs_all_six_stages(app: FastAPI, client: AsyncClient) -> 
     assert [s["key"] for s in steps] == [
         "validate",
         "repository",
+        "cloud",
         "pipeline",
         "gitops",
         "deploy",
@@ -139,7 +140,10 @@ async def test_retry_resumes_at_the_failed_stage(app: FastAPI, client: AsyncClie
     steps = {s["key"]: s for s in detail["launch"]["steps"]}
     # Stages that succeeded before are kept, not re-run.
     assert steps["pipeline"]["logs"][-1] == "↺ Kept from the previous launch"
-    assert steps["pipeline"]["detail"] == failed["launch"]["steps"][2]["detail"]
+    assert (
+        steps["pipeline"]["detail"]
+        == {s["key"]: s for s in failed["launch"]["steps"]}["pipeline"]["detail"]
+    )
     assert "Kept" not in steps["deploy"]["logs"][-1]
     assert all(s["status"] == "succeeded" for s in steps.values())
 

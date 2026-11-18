@@ -5,13 +5,14 @@ import { AnimatePresence, motion, useSpring, useTransform } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Burst } from "@/components/Burst";
+import { CloudPanel } from "@/components/Cloud";
 import { DecommissionDialog } from "@/components/DecommissionDialog";
 import { MagneticButton } from "@/components/MagneticButton";
 import { StatusBadge } from "@/components/StatusDot";
 import { TemplateIcon } from "@/components/TemplateIcon";
 import { api, type Step } from "@/lib/api";
 import { duration } from "@/lib/format";
-import { stageByKey } from "@/lib/stages";
+import { STAGES, stageByKey } from "@/lib/stages";
 import { useLaunchStream } from "@/lib/useLaunchStream";
 
 function useNow(active: boolean) {
@@ -73,7 +74,7 @@ function Trajectory({ steps, failed }: { steps: Step[]; failed: boolean }) {
           </motion.div>
         </motion.div>
       </div>
-      <div className="mt-3 grid grid-cols-6 text-center text-[11px] text-faint">
+      <div className="mt-3 grid text-center text-[11px] text-faint" style={{ gridTemplateColumns: `repeat(${steps.length || 1}, minmax(0, 1fr))` }}>
         {steps.map((s) => (
           <span key={s.key} className={clsx("truncate px-1", s.status === "running" && "text-violet-soft", s.status === "succeeded" && "text-muted")}>
             {stageByKey[s.key]?.title ?? s.title}
@@ -233,6 +234,11 @@ export function ServiceView() {
   const current = steps.find((s) => s.status === "running") ?? [...steps].reverse().find((s) => s.status !== "pending");
   const shown = steps.find((s) => s.key === (selected ?? current?.key));
 
+  const cloudDone = steps.find((s) => s.key === "cloud")?.status === "succeeded";
+  useEffect(() => {
+    if (cloudDone) void queryClient.invalidateQueries({ queryKey: ["service", name] });
+  }, [cloudDone, name, queryClient]);
+
   useEffect(() => {
     if (running) wasRunning.current = true;
     if (wasRunning.current && launch?.status === "succeeded") setJustFinished(true);
@@ -391,10 +397,12 @@ export function ServiceView() {
               now={now}
             />
           ))}
-          {!steps.length && Array.from({ length: 6 }, (_, i) => <div key={i} className="mb-5 h-14 animate-pulse rounded-xl bg-white/[0.03]" />)}
+          {!steps.length && Array.from({ length: STAGES.length }, (_, i) => <div key={i} className="mb-5 h-14 animate-pulse rounded-xl bg-white/[0.03]" />)}
         </div>
         <Terminal step={shown} running={shown?.status === "running"} />
       </div>
+
+      {service && !retired && <CloudPanel service={service} provisioning={running} />}
     </div>
   );
 }

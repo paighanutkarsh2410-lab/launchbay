@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Brings up the whole Launchbay platform on this machine:
-#   kind cluster -> Traefik ingress -> Kyverno guardrails -> Argo CD -> ApplicationSet
+#   kind cluster -> Traefik ingress -> AWS emulator -> Kyverno guardrails -> Argo CD -> ApplicationSet
 # and writes Argo CD credentials for the API to services/api/.env.
 #
 # Usage: ./scripts/platform-up.sh [gitops-owner]
@@ -56,6 +56,11 @@ helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
 helm repo update traefik >/dev/null
 helm upgrade --install traefik traefik/traefik --version "$TRAEFIK_CHART_VERSION" \
   --namespace traefik --create-namespace -f "$PLATFORM/traefik/values.yaml" --wait --timeout 5m >/dev/null
+
+step "AWS emulator (Moto) for cloud resources"
+kubectl apply -f "$PLATFORM/cloud/moto.yaml" >/dev/null
+kubectl -n launchbay-cloud rollout status deployment/moto --timeout=180s >/dev/null
+echo "Moto is up at http://aws.localtest.me (in the cluster: moto.launchbay-cloud:5000)"
 
 step "Kyverno $KYVERNO_CHART_VERSION and Launchbay's guardrails"
 kubectl create namespace kyverno --dry-run=client -o yaml | kubectl apply -f - >/dev/null
@@ -117,11 +122,13 @@ TOKEN="$(curl -fsS -X POST "$ARGOCD_URL/api/v1/account/launchbay/token" \
 
 ENV_FILE="$ROOT/services/api/.env"
 touch "$ENV_FILE"
-grep -v '^LAUNCHBAY_ARGOCD_' "$ENV_FILE" > "$ENV_FILE.tmp" || true
+grep -v '^LAUNCHBAY_ARGOCD_\|^LAUNCHBAY_CLOUD=' "$ENV_FILE" > "$ENV_FILE.tmp" || true
 {
   cat "$ENV_FILE.tmp"
   echo "LAUNCHBAY_ARGOCD_URL=$ARGOCD_URL"
   echo "LAUNCHBAY_ARGOCD_TOKEN=$TOKEN"
+  # Real cloud resources need Terraform on this machine; without it they are simulated.
+  if command -v terraform >/dev/null; then echo "LAUNCHBAY_CLOUD=emulator"; fi
 } > "$ENV_FILE"
 rm -f "$ENV_FILE.tmp"
 chmod 600 "$ENV_FILE" 2>/dev/null || true
@@ -132,5 +139,6 @@ cat <<EOF
   Argo CD UI     $ARGOCD_URL   (user: admin; password: run the command below)
                  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
   Services       http://<service>.localtest.me
+  AWS emulator   http://aws.localtest.me
   Tear down      kind delete cluster --name $CLUSTER
 EOF

@@ -7,12 +7,14 @@
 **Ship a service in minutes, not tickets.**
 
 A self-service internal developer platform. Pick a template, name your service, and Launchbay
-creates the repo, runs a tested, scanned and signed pipeline, and lets Argo CD put it live.
+creates the repo, provisions its cloud resources with Terraform, runs a tested, scanned and signed
+pipeline, and lets Argo CD put it live.
 
 [![CI](https://github.com/paighanutkarsh2410-lab/launchbay/actions/workflows/ci.yml/badge.svg)](https://github.com/paighanutkarsh2410-lab/launchbay/actions/workflows/ci.yml)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)
 ![React](https://img.shields.io/badge/Portal-React%2019-61dafb)
 ![Argo CD](https://img.shields.io/badge/GitOps-Argo%20CD-ef7b4d)
+![Terraform](https://img.shields.io/badge/cloud-Terraform-7b42bc)
 ![cosign](https://img.shields.io/badge/images-signed%20with%20cosign-2e7d32)
 
 </div>
@@ -31,10 +33,11 @@ from idea to production. Launchbay is that path, end to end, running on a single
 |---|---|---|
 | 1 | **Validate** | Name is DNS-safe and unused, template exists, owner is set |
 | 2 | **Repository** | A GitHub App creates the repo and renders the template into its first commit |
-| 3 | **Build & sign** | The template's CI tests, scans with Trivy, builds, pushes to GHCR and signs with cosign |
-| 4 | **GitOps** | A manifest for the service is committed to `launchbay-gitops` |
-| 5 | **Deploy** | An Argo CD ApplicationSet turns the manifest into an app in its own namespace |
-| 6 | **Live** | The health check passes and the service gets its URL |
+| 3 | **Cloud** | Terraform provisions the S3 bucket, SQS queue and DynamoDB table it asked for |
+| 4 | **Build & sign** | The template's CI tests, scans with Trivy, builds, pushes to GHCR and signs with cosign |
+| 5 | **GitOps** | A manifest for the service, with its resources' variables, is committed to `launchbay-gitops` |
+| 6 | **Deploy** | An Argo CD ApplicationSet turns the manifest into an app in its own namespace |
+| 7 | **Live** | The health check passes and the service gets its URL |
 
 Every stage is stored and streamed to the portal over Server-Sent Events, so you watch the launch
 happen: logs scroll in, the timeline fills, and the rocket flies.
@@ -53,6 +56,14 @@ happen: logs scroll in, the timeline fills, and the rocket flies.
   The policies use Kyverno's CEL-based `ValidatingPolicy` and `ImageValidatingPolicy`; CI tests them
   with `kyverno test`, `scripts/verify-guardrails.sh` proves them on the live cluster, and a blocked
   deploy names the rule it broke.
+- **Cloud resources with Terraform.** A service can ask for object storage (S3), a message queue
+  (SQS, with a dead-letter queue) and a key-value table (DynamoDB). Launchbay applies one Terraform
+  root per service, with its own state, through reusable modules: every resource is encrypted with
+  a KMS key of the service's own, tagged with its owner, and handed to the service as environment
+  variables through GitOps. Locally it all runs on [Moto](https://github.com/getmoto/moto), an
+  open-source AWS emulator, inside the cluster; the same Terraform targets real AWS by leaving out
+  the endpoint. The modules have mocked unit tests and an apply-and-destroy integration test in CI,
+  and the API re-applies them on start, so a restarted emulator is repopulated.
 - **Provider architecture.** The launcher talks to the world only through providers. `GitHubProvider`
   does it for real; `DemoProvider` simulates every stage so the portal runs with no credentials.
 - **GitHub App, not tokens.** Scoped permissions and short-lived installation tokens.
@@ -84,23 +95,27 @@ the command palette.
 ## Run the platform
 
 Real launches deploy to a Kubernetes cluster on your own machine. You need Docker (Docker Desktop on
-WSL 2 on Windows), [kind](https://kind.sigs.k8s.io), kubectl and Helm.
+WSL 2 on Windows), [kind](https://kind.sigs.k8s.io), kubectl and Helm, plus
+[Terraform](https://developer.hashicorp.com/terraform/install) 1.17 for cloud resources.
 
 ```bash
 ./scripts/platform-up.sh
 ```
 
-One command, safe to re-run. It creates a kind cluster, installs Traefik as the ingress controller
-and Kyverno with Launchbay's guardrails,
+One command, safe to re-run. It creates a kind cluster, installs Traefik as the ingress controller,
+the Moto AWS emulator and Kyverno with Launchbay's guardrails,
 installs Argo CD (pinned and checksum-verified), and applies the ApplicationSet that watches
 [launchbay-gitops](https://github.com/launchbay-labs/launchbay-gitops). It also mints a
-**read-only** Argo CD API token for Launchbay and writes it to `services/api/.env` (git-ignored).
+**read-only** Argo CD API token for Launchbay and writes it to `services/api/.env` (git-ignored),
+switching cloud resources from simulated to real Terraform when `terraform` is installed. Terraform
+state lives in `~/.launchbay/cloud/<service>`, outside the repo.
 
 | What | Where |
 |---|---|
 | Argo CD | http://argocd.localtest.me |
 | Any launched service | http://&lt;name&gt;.localtest.me |
-| Example service | http://hello-launchbay.localtest.me |
+| AWS emulator (Moto) | http://aws.localtest.me |
+| A service's view of its resources (Python template) | http://&lt;name&gt;.localtest.me/cloud |
 
 Launched services push **private** images to GHCR. To let the cluster pull them, create a
 [classic token with only `read:packages`](https://github.com/settings/tokens/new?scopes=read:packages&description=launchbay-ghcr-pull)
@@ -129,6 +144,8 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 | `services/api` | FastAPI API, launcher and providers |
 | `templates/` | Golden-path templates rendered into new repos |
 | `platform/` | kind, Traefik and Argo CD configuration, and the ApplicationSet |
+| `platform/terraform/` | Terraform modules (bucket, queue, table) and the per-service root, with tests |
+| `platform/cloud/` | The Moto AWS emulator, run in the cluster |
 | `scripts/platform-up.sh` | Brings the whole platform up locally |
 | `platform/kyverno/` | Guardrail policies and their `kyverno test` suite |
 | `scripts/verify-guardrails.sh` | Proves the guardrails on the live cluster |
@@ -141,5 +158,5 @@ real hostname with no hosts-file edits. Tear everything down with `kind delete c
 - [x] GitHub App on the `launchbay-labs` org: real launches, click to live URL in about 2.5 minutes
 - [x] Retry from the failed stage and decommission (archive or delete) from the portal
 - [x] **Phase 2**: Kyverno guardrails (CEL policies), signed-image enforcement, policy tests in CI
-- [ ] **Phase 3**: cloud resources with Terraform on LocalStack
+- [x] **Phase 3**: cloud resources (S3, SQS, DynamoDB) with Terraform, on a local AWS emulator
 - [ ] **Phase 4**: service scorecards and an AI helper that explains failed launches

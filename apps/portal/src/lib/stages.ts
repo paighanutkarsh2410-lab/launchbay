@@ -1,4 +1,4 @@
-import { GitBranch, GitCommitHorizontal, Radio, ShieldCheck, Ship, Workflow, type LucideIcon } from "lucide-react";
+import { Cloud, GitBranch, GitCommitHorizontal, Radio, ShieldCheck, Ship, Workflow, type LucideIcon } from "lucide-react";
 
 export interface StageInfo {
   key: string;
@@ -10,6 +10,7 @@ export interface StageInfo {
 export const STAGES: StageInfo[] = [
   { key: "validate", title: "Validate", blurb: "Name, template and owner checked", icon: ShieldCheck },
   { key: "repository", title: "Repository", blurb: "Repo created from the template", icon: GitBranch },
+  { key: "cloud", title: "Cloud", blurb: "Terraform provisions S3, SQS, DynamoDB", icon: Cloud },
   { key: "pipeline", title: "Build & sign", blurb: "Tested, scanned, signed with cosign", icon: Workflow },
   { key: "gitops", title: "GitOps", blurb: "Manifest committed to the GitOps repo", icon: GitCommitHorizontal },
   { key: "deploy", title: "Deploy", blurb: "Argo CD syncs it to its namespace", icon: Ship },

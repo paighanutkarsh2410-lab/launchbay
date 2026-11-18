@@ -12,6 +12,7 @@ from app.main import create_app
 @pytest.fixture
 async def app(tmp_path) -> AsyncIterator[FastAPI]:
     settings = Settings(
+        _env_file=None,  # tests never read the developer's services/api/.env
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
         provider="demo",
         demo_speed=0,  # no waiting in tests

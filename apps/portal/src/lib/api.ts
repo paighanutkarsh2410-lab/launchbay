@@ -1,5 +1,6 @@
 export type StepStatus = "pending" | "running" | "succeeded" | "failed";
 export type ServiceStatus = "launching" | "live" | "failed" | "decommissioned";
+export type ResourceKind = "bucket" | "queue" | "table";
 
 export interface Template {
   id: string;
@@ -21,6 +22,7 @@ export interface Service {
   status: ServiceStatus;
   repo_url: string | null;
   url: string | null;
+  resources: ResourceKind[];
   created_at: string;
 }
 
@@ -44,8 +46,21 @@ export interface Launch {
   steps: Step[];
 }
 
+export interface CloudResource {
+  kind: ResourceKind | "key";
+  name: string;
+  arn: string;
+}
+
 export interface ServiceDetail extends Service {
   launch: Launch | null;
+  cloud: { env: Record<string, string>; resources: CloudResource[] } | null;
+}
+
+export interface CloudInfo {
+  mode: "simulated" | "emulator";
+  label: string;
+  kinds: { id: ResourceKind; title: string; service: string; description: string; env: string }[];
 }
 
 export interface Stats {
@@ -67,6 +82,7 @@ export interface NewService {
   template_id: string;
   owner: string;
   description: string;
+  resources: ResourceKind[];
 }
 
 export interface Guardrail {
@@ -114,6 +130,7 @@ export const api = {
   service: (name: string) => request<ServiceDetail>(`/services/${name}`),
   stats: () => request<Stats>("/stats"),
   guardrails: () => request<Guardrail[]>("/guardrails"),
+  cloud: () => request<CloudInfo>("/cloud"),
   checkName: (name: string) =>
     request<NameCheck>(`/services/check-name?name=${encodeURIComponent(name)}`),
   retry: (name: string) => request<Service>(`/services/${name}/retry`, { method: "POST" }),

@@ -135,10 +135,10 @@ export function Overview() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-violet-soft">The launch</p>
-            <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Six stages, fully automated</h2>
+            <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Seven stages, fully automated</h2>
           </div>
         </div>
-        <div className="relative mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="relative mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           <motion.div
             aria-hidden
             className="absolute left-0 right-0 top-[34px] hidden h-px origin-left bg-gradient-to-r from-violet via-cyan to-ember lg:block"

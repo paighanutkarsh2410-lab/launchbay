@@ -32,14 +32,10 @@ spec:
         targetRevision: main
         path: charts/service
         helm:
-          valuesObject:
-            name: "{{ .name }}"
-            owner: "{{ .owner }}"
-            template: "{{ .template }}"
-            image: "{{ .image }}"
-            port: "{{ .port }}"
-            host: "{{ .host }}"
-            runAsUser: "{{ .runAsUser }}"
+          # The service's manifest is its values file, so every field Launchbay writes
+          # (image, port, cloud resource env, ...) reaches the chart unchanged.
+          valueFiles:
+            - "../../services/{{ .path.filename }}"
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{ .name }}"

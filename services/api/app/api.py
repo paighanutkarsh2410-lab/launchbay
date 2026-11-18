@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sse_starlette.sse import EventSourceResponse
 
+from app.cloud import KINDS
 from app.guardrails import load_guardrails
 from app.launcher import Launcher
 from app.models import Launch, Service, ServiceStatus, StepStatus
@@ -16,11 +17,14 @@ from app.providers.base import StepError
 from app.schemas import (
     NAME_PATTERN,
     RESERVED_NAMES,
+    CloudInfo,
+    CloudOut,
     DecommissionRequest,
     DecommissionResult,
     GuardrailOut,
     LaunchOut,
     NameCheck,
+    ResourceKindOut,
     ServiceCreate,
     ServiceDetail,
     ServiceOut,
@@ -53,6 +57,17 @@ Catalog = Annotated[TemplateCatalog, Depends(get_catalog)]
 async def list_templates(catalog: Catalog) -> list[TemplateOut]:
     fields = TemplateOut.model_fields
     return [TemplateOut(**{k: getattr(t, k) for k in fields}) for t in catalog.all()]
+
+
+@router.get("/cloud", response_model=CloudInfo)
+async def cloud_info(request: Request) -> CloudInfo:
+    """What a service can ask for at launch, and where it will be provisioned."""
+    cloud = request.app.state.cloud
+    return CloudInfo(
+        mode=cloud.mode,
+        label=cloud.label,
+        kinds=[ResourceKindOut(**vars(kind)) for kind in KINDS],
+    )
 
 
 @router.get("/services", response_model=list[ServiceOut])
@@ -88,6 +103,7 @@ async def create_service(
         template_id=body.template_id,
         owner=body.owner,
         description=body.description,
+        resources=body.resources,
     )
 
 
@@ -109,6 +125,7 @@ async def get_service(name: str, session: Session) -> ServiceDetail:
     return ServiceDetail(
         **ServiceOut.model_validate(service).model_dump(),
         launch=LaunchOut.model_validate(latest) if latest else None,
+        cloud=CloudOut.model_validate(service.cloud) if service.cloud else None,
     )
 
 

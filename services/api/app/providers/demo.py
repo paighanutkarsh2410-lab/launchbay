@@ -69,6 +69,7 @@ class DemoProvider(Provider):
                 f"  image: {request.outputs.get('image', '')}",
                 f"  port: {request.template.port}",
                 f"  runAsUser: {request.template.uid}",
+                *[f"  env.{k}: {v}" for k, v in request.cloud_env.items()],
                 "Committed to launchbay-gitops@main",
             ],
         )

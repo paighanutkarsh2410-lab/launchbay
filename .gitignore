@@ -19,3 +19,8 @@ dist/
 
 # Editor and agent settings
 .claude/
+
+# Terraform working directories (state lives in ~/.launchbay/cloud)
+.terraform/
+*.tfstate
+*.tfstate.*

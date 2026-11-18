@@ -274,6 +274,9 @@ class GitHubProvider(Provider):
             "host": f"{request.name}.{self.settings.service_domain}",
             "runAsUser": request.template.uid,
         }
+        if request.cloud_env:
+            manifest["env"] = request.cloud_env
+            manifest["awsEmulator"] = request.cloud_emulated
         body = yaml.safe_dump(manifest, sort_keys=False)
         for line in body.splitlines():
             await ctx.log(f"  {line}")

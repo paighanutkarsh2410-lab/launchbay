@@ -1,4 +1,4 @@
-"""Runs a launch: six stages in order, each persisted and streamed as it changes."""
+"""Runs a launch: seven stages in order, each persisted and streamed as it changes."""
 
 import asyncio
 import logging
@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
+from app.cloud import Cloud, ordered
 from app.events import EventBroker
 from app.models import Launch, LaunchStep, Service, ServiceStatus, StepStatus
 from app.providers.base import LaunchRequest, Provider, StepError
@@ -26,6 +27,7 @@ class Stage:
 STAGES = [
     Stage("validate", "Validate request"),
     Stage("repository", "Create repository"),
+    Stage("cloud", "Provision cloud resources"),
     Stage("pipeline", "Build, scan & sign"),
     Stage("gitops", "Register with GitOps"),
     Stage("deploy", "Deploy with Argo CD"),
@@ -79,17 +81,32 @@ class Launcher:
         provider: Provider,
         catalog: TemplateCatalog,
         events: EventBroker,
+        cloud: Cloud,
     ) -> None:
         self.sessions = sessions
         self.provider = provider
+        self.cloud = cloud
         self.catalog = catalog
         self.events = events
         self._tasks: set[asyncio.Task] = set()
 
     async def create(
-        self, session: AsyncSession, *, name: str, template_id: str, owner: str, description: str
+        self,
+        session: AsyncSession,
+        *,
+        name: str,
+        template_id: str,
+        owner: str,
+        description: str,
+        resources: list[str] | None = None,
     ) -> Service:
-        service = Service(name=name, template_id=template_id, owner=owner, description=description)
+        service = Service(
+            name=name,
+            template_id=template_id,
+            owner=owner,
+            description=description,
+            resources=ordered(resources or []),
+        )
         launch = Launch(service=service)
         launch.steps = [
             LaunchStep(key=stage.key, title=stage.title, position=i, logs=[])
@@ -103,11 +120,13 @@ class Launcher:
     async def retry(self, session: AsyncSession, service: Service) -> Launch:
         """Starts a new launch that keeps every stage that succeeded and resumes at the first
         one that did not. The previous launch stays in the history."""
-        previous = service.launches[0]
+        previous = {step.key: step for step in service.launches[0].steps}
         steps = []
         resuming = False
-        for i, (stage, old) in enumerate(zip(STAGES, previous.steps, strict=True)):
-            if old.status == StepStatus.SUCCEEDED and not resuming:
+        for i, stage in enumerate(STAGES):
+            # A launch from before a stage was added has no step for it: resume there.
+            old = previous.get(stage.key)
+            if old is not None and old.status == StepStatus.SUCCEEDED and not resuming:
                 steps.append(
                     LaunchStep(
                         key=stage.key,
@@ -134,14 +153,13 @@ class Launcher:
     async def decommission(
         self, session: AsyncSession, service: Service, *, delete_repository: bool
     ) -> list[str]:
-        """Removes the service from GitOps (Argo CD prunes it) and archives or deletes its repo."""
-        request = LaunchRequest(
-            name=service.name,
-            description=service.description,
-            owner=service.owner,
-            template=self.catalog.get(service.template_id),
-        )
+        """Removes the service from GitOps (Argo CD prunes it), destroys its cloud resources,
+        and archives or deletes its repo."""
+        request = self._request(service)
         lines = await self.provider.decommission(request, delete_repository=delete_repository)
+        if service.resources or service.cloud:
+            lines += await self.cloud.destroy(service.name, service.owner, service.resources or [])
+            service.cloud = None
         if delete_repository:
             await session.delete(service)
         else:
@@ -176,15 +194,11 @@ class Launcher:
             if launch is None:
                 return
             service = launch.service
-            template = self.catalog.get(service.template_id)
-            request = LaunchRequest(
-                name=service.name,
-                description=service.description,
-                owner=service.owner,
-                template=template,
-            )
+            request = self._request(service)
             steps = {step.key: step for step in launch.steps}
             kept = {k: s.detail for k, s in steps.items() if s.status == StepStatus.SUCCEEDED}
+            if "cloud" in kept:
+                request.cloud_env = dict((service.cloud or {}).get("env") or {})
 
             failed: str | None = None
             if kept:
@@ -262,6 +276,21 @@ class Launcher:
                 await ctx.detail("Name, template and owner are valid")
             case "repository":
                 service.repo_url = await self.provider.create_repository(request, ctx)
+            case "cloud":
+                if not request.resources:
+                    await ctx.log("No cloud resources requested")
+                    await ctx.detail("None requested")
+                    return
+                await ctx.log(f"Target: {self.cloud.label}")
+                await ctx.log(f"Requested: {', '.join(request.resources)}")
+                result = await self.cloud.provision(
+                    service.name, service.owner, request.resources, ctx
+                )
+                service.cloud = result.as_json()
+                request.cloud_env = result.env
+                for name, value in result.env.items():
+                    await ctx.log(f"  {name}={value}")
+                await ctx.detail(f"{len(result.resources)} resources ready")
             case "pipeline":
                 request.outputs["image"] = await self.provider.run_pipeline(request, ctx)
             case "gitops":
@@ -270,3 +299,37 @@ class Launcher:
                 await self.provider.deploy(request, ctx)
             case "live":
                 service.url = await self.provider.wait_live(request, ctx)
+
+    def _request(self, service: Service) -> LaunchRequest:
+        return LaunchRequest(
+            name=service.name,
+            description=service.description,
+            owner=service.owner,
+            template=self.catalog.get(service.template_id),
+            resources=list(service.resources or []),
+            cloud_emulated=self.cloud.mode == "emulator",
+        )
+
+    async def reconcile_cloud(self) -> None:
+        """Re-applies every live service's Terraform. The emulator keeps resources in memory,
+        so after a restart this puts them back; on a running emulator it changes nothing."""
+        async with self.sessions() as session:
+            services = list(
+                await session.scalars(select(Service).where(Service.status == ServiceStatus.LIVE))
+            )
+            for service in services:
+                if not service.resources:
+                    continue
+                try:
+                    result = await self.cloud.provision(
+                        service.name, service.owner, service.resources
+                    )
+                except Exception as error:  # noqa: BLE001 - one service must not stop the rest
+                    log.warning(
+                        "Could not reconcile cloud resources for %s: %s", service.name, error
+                    )
+                    continue
+                # Recreated resources can have new ARNs (the KMS key's is random).
+                service.cloud = result.as_json()
+                await session.commit()
+                log.info("Cloud resources for %s are in place", service.name)

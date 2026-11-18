@@ -21,6 +21,12 @@ class LaunchRequest:
     description: str
     owner: str
     template: Template
+    # Cloud resources the service asked for (bucket, queue, table).
+    resources: list[str] = field(default_factory=list)
+    # Environment variables for those resources, set by the cloud stage.
+    cloud_env: dict[str, str] = field(default_factory=dict)
+    # Whether the resources live on the local AWS emulator.
+    cloud_emulated: bool = False
     # Filled in as the launch goes; later stages read what earlier ones produced.
     outputs: dict[str, str] = field(default_factory=dict)
 

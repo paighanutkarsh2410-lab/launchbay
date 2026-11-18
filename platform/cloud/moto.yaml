@@ -1,0 +1,99 @@
+# The local AWS emulator: Moto server (Apache-2.0, no account or token needed).
+# Terraform on the laptop reaches it through Traefik at http://aws.localtest.me;
+# launched services reach it inside the cluster at http://moto.launchbay-cloud.svc.cluster.local:5000.
+# Moto keeps state in memory. Launchbay's Terraform state lives on the laptop, so a restarted
+# emulator is repopulated by re-applying (the API does this when it starts).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: launchbay-cloud
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moto
+  namespace: launchbay-cloud
+  labels: { app.kubernetes.io/name: moto }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: moto }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: moto }
+    spec:
+      automountServiceAccountToken: false
+      # Otherwise the Service named "moto" injects MOTO_PORT=tcp://..., which Moto reads as its port.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: moto
+          # motoserver/moto 5.2.5, pinned by digest.
+          image: docker.io/motoserver/moto:5.2.5@sha256:59a1965d845249b04def37a0e2565f9cc6c44543cb89b68e90f28f344b3b0d1a
+          ports:
+            - { name: http, containerPort: 5000 }
+          env:
+            # Requests arrive as aws.localtest.me or a cluster DNS name, never <bucket>.<host>.
+            - { name: S3_IGNORE_SUBDOMAIN_BUCKETNAME, value: "true" }
+            - { name: HOME, value: /tmp }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          readinessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moto
+  namespace: launchbay-cloud
+spec:
+  selector: { app.kubernetes.io/name: moto }
+  ports:
+    - { name: http, port: 5000, targetPort: http }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: moto
+  namespace: launchbay-cloud
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: aws.localtest.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: moto
+                port: { name: http }
+    # S3 Control calls (bucket tags) go to <account-id>.<endpoint host>.
+    - host: "*.aws.localtest.me"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: moto
+                port: { name: http }

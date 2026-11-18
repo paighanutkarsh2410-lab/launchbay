@@ -27,6 +27,12 @@ class ServiceCreate(BaseModel):
     template_id: str
     owner: str = Field(min_length=2, max_length=64)
     description: str = Field(default="", max_length=280)
+    resources: list[Literal["bucket", "queue", "table"]] = Field(default_factory=list)
+
+    @field_validator("resources")
+    @classmethod
+    def unique(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(value))
 
     @field_validator("name")
     @classmethod
@@ -81,11 +87,43 @@ class ServiceOut(BaseModel):
     status: ServiceStatus
     repo_url: str | None
     url: str | None
+    resources: list[str] = []
     created_at: datetime
+
+    @field_validator("resources", mode="before")
+    @classmethod
+    def none_is_empty(cls, value: list[str] | None) -> list[str]:
+        return value or []
+
+
+class CloudResource(BaseModel):
+    kind: str
+    name: str
+    arn: str
+
+
+class CloudOut(BaseModel):
+    env: dict[str, str] = {}
+    resources: list[CloudResource] = []
 
 
 class ServiceDetail(ServiceOut):
     launch: LaunchOut | None
+    cloud: CloudOut | None = None
+
+
+class ResourceKindOut(BaseModel):
+    id: str
+    title: str
+    service: str
+    description: str
+    env: str
+
+
+class CloudInfo(BaseModel):
+    mode: str
+    label: str
+    kinds: list[ResourceKindOut]
 
 
 class DecommissionRequest(BaseModel):

@@ -65,6 +65,9 @@ class Service(Base):
     )
     repo_url: Mapped[str | None] = mapped_column(String(255))
     url: Mapped[str | None] = mapped_column(String(255))
+    # Cloud resources asked for at launch, and what Terraform provisioned for them.
+    resources: Mapped[list[str]] = mapped_column(JSON, default=list)
+    cloud: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     launches: Mapped[list["Launch"]] = relationship(

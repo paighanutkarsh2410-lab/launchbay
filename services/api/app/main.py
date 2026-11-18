@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -6,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import update
 
 from app.api import router
+from app.cloud import build_cloud
 from app.config import Settings, get_settings
 from app.db import Database
 from app.events import EventBroker
@@ -47,8 +49,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.db = db
         app.state.events = events
         app.state.catalog = catalog
-        app.state.launcher = Launcher(db.sessions, build_provider(settings), catalog, events)
+        cloud = build_cloud(settings)
+        app.state.cloud = cloud
+        app.state.launcher = launcher = Launcher(
+            db.sessions, build_provider(settings), catalog, events, cloud
+        )
+        reconcile = None
+        if settings.cloud == "emulator":
+            # In the background: startup should not wait on Terraform.
+            reconcile = asyncio.create_task(launcher.reconcile_cloud(), name="reconcile-cloud")
         yield
+        if reconcile:
+            reconcile.cancel()
         await app.state.launcher.shutdown()
         await db.dispose()
 
