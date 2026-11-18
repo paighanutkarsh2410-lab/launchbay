@@ -21,6 +21,8 @@ async def app(tmp_path) -> AsyncIterator[FastAPI]:
     application = create_app(settings)
     async with LifespanManager(application):
         yield application
+        # Let launches a test started finish before the loop closes under them.
+        await application.state.launcher.wait_idle()
 
 
 @pytest.fixture
